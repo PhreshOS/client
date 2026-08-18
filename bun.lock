@@ -1,0 +1,21 @@
+{
+  "lockfileVersion": 1,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "@phreshos/client",
+      "devDependencies": {
+        "@phreshos/core": "^0.1.1",
+        "typescript": "^6.0.3",
+      },
+      "peerDependencies": {
+        "@phreshos/core": "^0.1.1",
+      },
+    },
+  },
+  "packages": {
+    "@phreshos/core": ["@phreshos/core@0.1.1", "", {}, "sha512-R+4KkGJ/VjPAOLwkQfmTiEE//PPs8JUuxEefhH7c0XVRgs1UjEnfoEZMxp+f9hVxlSM4RGmURaqvubJk3BuqUA=="],
+
+    "typescript": ["typescript@6.0.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
+  }
+}
