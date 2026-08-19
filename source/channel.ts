@@ -2,7 +2,8 @@ import type {
   Channel as CoreChannel,
   ChannelCapture as CoreChannelCapture,
   ChannelEvents as CoreChannelEvents,
-  ChannelMessage as CoreChannelMessage
+  ChannelMessage as CoreChannelMessage,
+  ServiceDefinition
 } from "@phreshos/core"
 import { visibleEndpoint, type Endpoint, type EndpointReference } from "./domain.js"
 import Events from "./events.js"
@@ -19,7 +20,7 @@ export type ChannelEvents<Events extends object> = CoreChannelEvents<Events, End
 export type ChannelCapture<Events extends object = {}> = CoreChannelCapture<Events, Endpoint | null>
 
 /** Events explicitly accepted by the current Client. */
-export interface Channel<Events extends object = {}> extends CoreChannel<Events, Endpoint | null> {}
+export interface Channel<Events extends object = {}> extends CoreChannel<Events, Endpoint | null, ServiceDefinition> {}
 
 class ClientChannel extends Events {
   public constructor() {
@@ -35,7 +36,7 @@ class ClientChannel extends Events {
     wire.send("end-host", "emit", event, payload)
   }
 
-  public async enableService(name: string) { await enableCurrentService(name) }
+  public async enableService(definition: ServiceDefinition) { await enableCurrentService(definition) }
   public async disableService() { await disableCurrentService() }
 }
 

@@ -93,6 +93,7 @@ const service = host.service({ program: "counter", endpoint: "server", name: "st
 assert.equal(service, host.service({ program: "counter", endpoint: "server", name: "state" }))
 assert(service instanceof ServiceHandler)
 assert(service instanceof ServerServiceHandler)
+assert.equal(typeof service.docs, "function")
 assert.equal(messages.length, 1)
 assert.equal(messages[0][0], "boundary")
 assert.equal(messages[0][1], "document")
@@ -114,7 +115,8 @@ const theme: Promise<Readonly<ThemeProperties>> = host.theme.snapshot()
 const counter: ServerServiceHandler<CounterEvents> = host.service<CounterEvents>({ program: "counter", endpoint: "server", name: "state" })
 const counterStop = counter.channel.subscribe("change", value => void value)
 const counterAnswer: Promise<number> = counter.channel.ask<number>("value")
-const expose: Promise<void> = current.enableService("state")
+const counterDocs: Promise<string | null> = counter.docs()
+const expose: Promise<void> = current.enableService({ name: "state" })
 const surface = host.surface.subscribe("resize", size => void size.width)
 const pointer = host.pointer.subscribe("move", position => void position.x)
 const windowSurface: Promise<void> = current.window.surface.set({ opacity: 0.5 })
@@ -129,6 +131,7 @@ void theme
 void counter
 void counterStop
 void counterAnswer
+void counterDocs
 void expose
 void surface
 void pointer
