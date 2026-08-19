@@ -5,16 +5,16 @@
     "": {
       "name": "@phreshos/client",
       "devDependencies": {
-        "@phreshos/core": "^0.1.2",
+        "@phreshos/core": "^0.1.3",
         "typescript": "^6.0.3",
       },
       "peerDependencies": {
-        "@phreshos/core": "^0.1.2",
+        "@phreshos/core": "^0.1.3",
       },
     },
   },
   "packages": {
-    "@phreshos/core": ["@phreshos/core@0.1.2", "", {}, "sha512-MfgtXcdZxj4h6xM74w40s7rihOmJZJe9Ht6kON2HrjDDmIhOmYE5wZq5s3I0YJXcXYjhbLipIDm9YJL9bXLo0A=="],
+    "@phreshos/core": ["@phreshos/core@0.1.3", "", {}, "sha512-iqMw1989umlBZBXRIGFBHh8W0Ib3F7XAOAHvgf9fz57RpTXKgVdrMPcdPVG3pdnKvB12Fjbsl+oifCQCkbp3sw=="],
 
     "typescript": ["typescript@6.0.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
   }
