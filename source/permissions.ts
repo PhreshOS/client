@@ -3,7 +3,7 @@ import wire from "./wire.js"
 
 const defaultPermissionTimeout = 30_000
 
-/** Client permission access bound to the current Process boundary. */
+/** Client access to the current Program's effective permission decisions. */
 export default class ClientPermissions implements Permissions {
   public async granted(name: PermissionName): Promise<PermissionDecision> {
     const answer = await wire.request(["permission-granted", name]) as [PermissionDecision]
@@ -25,3 +25,6 @@ export default class ClientPermissions implements Permissions {
     return answer?.[0] ?? null
   }
 }
+
+/** The one Program-owned permission capability visible in this isolated Client. */
+export const currentProgramPermissions = new ClientPermissions()

@@ -43,6 +43,25 @@ never enters an endpoint. Pointer position and movement both require the
 `pointer` permission. Reads are asynchronous requests; subscriptions receive
 only future publications and never replay a retained value.
 
+Permission decisions belong to the current Program, not to the desktop Host.
+They are available from a Program handle and flattened through `current` as the
+same canonical capability:
+
+```ts
+const program = await current.program()
+
+await program.permissions.granted("pointer")
+await current.permissions.request("pointer")
+await current.permissions.timeout(5_000).request("pointer")
+
+current.permissions === program.permissions
+```
+
+`granted()` reads the effective decision without prompting. `request()` asks
+only when no known decision can answer immediately and returns `null` if its
+deadline expires. The desktop remains the internal enforcement boundary, but
+permission ownership does not alter the public shape of `host`.
+
 A Client may traverse `Process.parent()` through any number of ancestors in
 its own Program. The first parent outside that Program is structurally hidden
 and returned as `null`; no cross-Program Process handle enters the client. If
@@ -112,10 +131,15 @@ expose host filesystem paths. Client Window capabilities add awaitable
 `localMove()` and `localResize()` for representation-local gestures. Their
 Promises confirm that the current Client host accepted and applied the local
 draft; they do not enter server authority or emit Window events.
+When both dimensions must change, `setGeometry({ position, size })` commits
+them through one authoritative request and produces one `geometry` event.
+Calling `move()` and `resize()` sequentially or through `Promise.all()` remains
+two independent operations and can expose an intermediate state remotely.
 
-An `under` or `over` Client may own one authoritative host-rendered Surface.
-The capability is command-only: Program code may change or remove it, but
-cannot read or subscribe to its server-owned state:
+An `under` or `over` Window representation may request one local host-rendered
+Surface. The capability follows the same desktop-local targeting model as
+`localMove()` and `localResize()`; it is command-only and has no server-owned
+state:
 
 ```ts
 await window.surface.set({
@@ -127,14 +151,18 @@ await window.surface.set({
 await window.surface.remove()
 ```
 
-The server stores the target beside its Window and delivers it internally to
-the desktop. `set()` with no settings creates a sharp, fully opaque Surface.
+The desktop holds the target only for the lifetime of the addressed iframe.
+Reloading or destroying that representation removes it; another accessible
+Window handle may tailor the same local representation, while other desktops
+remain unaffected. Program code may synchronize desired settings through its
+Server and explicitly apply them again. `set()` with no settings creates a
+sharp, fully opaque Surface.
 Opacity is a finite number from `0` through `1`; zero retains the Surface node.
 Radius accepts a nonnegative pixel number, a Theme-derived `ScaleLevel`, or
 `"full"`. Only `remove()` restores exact `null` and immediately removes the
 node. The optional transaction uses milliseconds and a stable named or cubic
 Bézier easing; the desktop performs the motion, honors reduced motion, and does
-does not replay a stored transaction when restoring desktop state. The sharp
+does not restore anything when a new iframe representation begins. The sharp
 container follows the iframe geometry while the independently rounded Surface
 neither clips nor masks Client content. `window` and `wallpaper` layers reject
 the capability.

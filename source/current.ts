@@ -21,6 +21,7 @@ import {
 } from "./domain.js"
 import wire from "./wire.js"
 import { endpointService } from "./service.js"
+import { currentProgramPermissions } from "./permissions.js"
 
 /** The current Process's canonical Server handle. */
 export type CurrentServer<Events extends object = {}> = Server<Events>
@@ -32,6 +33,9 @@ export interface Current<Events extends object = {}> extends Channel<Events>, Pi
 
   /** Presentation capability of this current Client. */
   readonly window: Window
+
+  /** The same permission capability exposed by the current Program. */
+  readonly permissions: Program["permissions"]
 
   /** Returns the Process represented by this Client. */
   process(): Promise<Process>
@@ -146,6 +150,7 @@ currentClient = new CurrentClientHandle(owner) as unknown as Client
 class ClientCurrent {
   public readonly server = currentServer
   public readonly window = currentClient.window
+  public readonly permissions = currentProgramPermissions
 
   public constructor() {
     bindChannel(this, channel)

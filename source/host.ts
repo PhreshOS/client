@@ -1,6 +1,5 @@
 import type {
   ClientServiceHandler,
-  Permissions,
   ServedFile,
   ServerServiceHandler,
   Theme,
@@ -9,7 +8,6 @@ import type {
 import { content } from "./content.js"
 import ClientTheme from "./theme.js"
 import wire from "./wire.js"
-import ClientPermissions from "./permissions.js"
 import ClientPointer, { type HostPointer } from "./pointer.js"
 import ClientSurface, { type HostSurface } from "./surface.js"
 import { service as serviceHandle } from "./service.js"
@@ -24,9 +22,6 @@ export interface Host {
 
   /** Permission-guarded desktop pointer reads and live movement. */
   readonly pointer: HostPointer
-
-  /** Permission decisions for capabilities guarded by the desktop. */
-  readonly permissions: Permissions
 
   /** Stores one value as a publicly reachable file. */
   serve(value: unknown): Promise<ServedFile>
@@ -53,7 +48,6 @@ class ClientHost {
   public readonly theme = new ClientTheme() as unknown as Theme<ThemeProperties>
   public readonly surface = new ClientSurface() as unknown as HostSurface
   public readonly pointer = new ClientPointer() as unknown as HostPointer
-  public readonly permissions = new ClientPermissions()
 
   public async serve(value: unknown): Promise<ServedFile> {
     const source = content(value)

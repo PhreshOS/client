@@ -87,8 +87,13 @@ assert.equal("disableService" in current.server, false)
 assert.equal(typeof host.theme.snapshot, "function")
 assert.equal(typeof host.surface.size, "function")
 assert.equal(typeof host.pointer.position, "function")
+assert.equal(typeof current.window.surface.set, "function")
+assert.equal(typeof current.window.surface.remove, "function")
 assert.equal("snapshot" in current.window.surface, false)
 assert.equal("subscribe" in current.window.surface, false)
+assert.equal(typeof current.permissions.granted, "function")
+assert.equal(typeof current.permissions.request, "function")
+assert.equal("permissions" in host, false)
 const service = host.service({ program: "counter", endpoint: "server", name: "state" })
 assert.equal(service, host.service({ program: "counter", endpoint: "server", name: "state" }))
 assert(service instanceof ServiceHandler)
@@ -119,12 +124,21 @@ const counterDocs: Promise<string | null> = counter.docs()
 const expose: Promise<void> = current.enableService({ name: "state" })
 const surface = host.surface.subscribe("resize", size => void size.width)
 const pointer = host.pointer.subscribe("move", position => void position.x)
-const windowSurface: Promise<void> = current.window.surface.set({ opacity: 0.5 })
+const clientSurface: Promise<void> = current.window.surface.set({ opacity: 0.5 })
+const geometry: Promise<void> = current.window.setGeometry({
+  position: { x: "0/1", y: "0/1" },
+  size: { width: "1/2", height: "1/2" }
+})
+const permission: Promise<boolean | null> = current.permissions.request("pointer")
 const server: Server = current.server
 void current.process().then(process => {
   const client: Client | null = process.client
   if (client) void client.start({ title: "Prepared title" })
   void client
+})
+void current.program().then(program => {
+  const samePermissions: typeof current.permissions = program.permissions
+  void samePermissions.granted("pointer")
 })
 
 void theme
@@ -135,7 +149,9 @@ void counterDocs
 void expose
 void surface
 void pointer
-void windowSurface
+void clientSurface
+void geometry
+void permission
 void server
 `
   )

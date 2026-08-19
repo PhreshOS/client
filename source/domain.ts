@@ -11,6 +11,7 @@ import {
   type AskMessage as CoreAskMessage,
   type AskObserver as CoreAskObserver,
   type Cleanup,
+  type ClientSurfaceSettings,
   type ClientTraffic as CoreClientTraffic,
   type ClientDeclaration,
   type EndpointTraffic as CoreEndpointTraffic,
@@ -19,6 +20,7 @@ import {
   type Launch,
   type LaunchClient,
   type Outcome,
+  type Permissions,
   type Position,
   type ProgramIconSize,
   type ServerTraffic as CoreServerTraffic,
@@ -27,7 +29,7 @@ import {
   type TrafficCapture as CoreTrafficCapture,
   type TrafficEvents as CoreTrafficEvents,
   type Window as CoreWindow,
-  type WindowSurfaceSettings,
+  type WindowGeometry,
   type WindowState
 } from "@phreshos/core"
 import Events from "./events.js"
@@ -36,6 +38,7 @@ import HandleRegistry from "./handle-registry.js"
 import { area, sql, store } from "./storage.js"
 import wire from "./wire.js"
 import { endpointService } from "./service.js"
+import { currentProgramPermissions } from "./permissions.js"
 
 export interface HandleAddress {
   identity: string
@@ -73,6 +76,9 @@ export type WindowRecord = WindowState
 
 /** Program handle visible inside a structurally isolated Client. */
 export type Program<Events extends object = {}> = Omit<CoreProgram<Events>, "processes" | "firstProcess" | "lastProcess" | "getProcess" | "createProcess"> & {
+  /** Effective permission decisions owned by this Program. */
+  readonly permissions: Permissions
+
   /** Returns every live Process of this Program visible to the current Client. */
   processes(): Promise<Process[]>
 
@@ -172,11 +178,23 @@ export type Client<Events extends object = {}> = Omit<CoreClient<Events>, "proce
 
 /** Client-owned Window capability visible inside a Client boundary. */
 export type Window = CoreWindow & {
+  /** Host-rendered material belonging only to this desktop representation. */
+  readonly surface: ClientWindowSurface
+
   /** Moves this Window representation without changing authoritative state. */
   localMove(position: Position): Promise<void>
 
   /** Resizes this Window representation without changing authoritative state. */
   localResize(size: Size): Promise<void>
+}
+
+/** Command-only Surface of one Window representation on this desktop. */
+export interface ClientWindowSurface {
+  /** Creates or replaces the representation-local Surface. */
+  set(settings?: ClientSurfaceSettings): Promise<void>
+
+  /** Immediately removes the representation-local Surface. */
+  remove(): Promise<void>
 }
 
 const handles = new HandleRegistry()
@@ -193,6 +211,7 @@ class ProgramHandle extends ProgramBase {
   public readonly store = store()
   public readonly logs = sql("logs")
   public readonly database = sql("database")
+  public readonly permissions = currentProgramPermissions
   private record: ProgramRecord
 
   public constructor(record: ProgramRecord) {
@@ -403,11 +422,11 @@ class ClientHandle extends ClientBase {
 }
 
 class WindowHandle extends Events {
-  public readonly surface: WindowSurfaceHandle
+  public readonly surface: ClientWindowSurface
 
   public constructor(private readonly target: WindowTarget) {
     super(...deferredScoped("host-end", target, (_event, values) => values[0]))
-    this.surface = new WindowSurfaceHandle(target)
+    this.surface = new ClientWindowSurfaceHandle(target)
   }
 
   private async state() {
@@ -425,16 +444,17 @@ class WindowHandle extends Events {
   public async move(position: Position) { await wire.request(["move", await this.target(), position]) }
   public async localMove(position: Position) { await wire.request(["localMove", await this.target(), position]) }
   public async resize(size: Size) { await wire.request(["resize", await this.target(), size]) }
+  public async setGeometry(geometry: WindowGeometry) { await wire.request(["setGeometry", await this.target(), geometry]) }
   public async localResize(size: Size) { await wire.request(["localResize", await this.target(), size]) }
   public async minimize(minimized = true) { await wire.request(["minimize", await this.target(), minimized]) }
   public async changeTitle(title: string) { await wire.request(["changeTitle", await this.target(), title]) }
   public async raise() { await wire.request(["raise", await this.target()]) }
 }
 
-class WindowSurfaceHandle {
+class ClientWindowSurfaceHandle implements ClientWindowSurface {
   public constructor(private readonly target: WindowTarget) {}
 
-  public async set(settings: WindowSurfaceSettings = {}) { await wire.request(["surfaceSet", await this.target(), settings]) }
+  public async set(settings: ClientSurfaceSettings = {}) { await wire.request(["surfaceSet", await this.target(), settings]) }
   public async remove() { await wire.request(["surfaceRemove", await this.target()]) }
 }
 
@@ -461,7 +481,7 @@ function deferredScoped(route: string, target: WindowTarget, convert: (event: st
 }
 
 function windowEvent(event: string) {
-  return event === "move" || event === "resize" || event === "minimize" || event === "changeTitle" || event === "front"
+  return event === "move" || event === "resize" || event === "geometry" || event === "minimize" || event === "changeTitle" || event === "front"
 }
 
 function deferred(target: WindowTarget, register: (subject: string) => Cleanup, impossible?: (error: Error) => void): Cleanup {
