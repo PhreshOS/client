@@ -127,36 +127,31 @@ The same rule applies to Client-visible traffic destinations.
 
 Client-visible Program handles can operate only within their own Program.
 They deliberately omit `install()` and `fork()`, and their storage areas never
-expose host filesystem paths. Client Window capabilities add awaitable
-`localMove()` and `localResize()` for representation-local gestures. Their
-Promises confirm that the current Client host accepted and applied the local
-draft; they do not enter server authority or emit Window events.
+expose host filesystem paths. `current.window` is authoritative and
+subscribable. `current.localWindow` is the physical representation belonging to
+this iframe on this desktop. Its reads and updates are local, have no events,
+and cannot target another Client handle.
 When both dimensions must change, `setGeometry({ position, size })` commits
 them through one authoritative request and produces one `geometry` event.
 Calling `move()` and `resize()` sequentially or through `Promise.all()` remains
 two independent operations and can expose an intermediate state remotely.
 
-An `under` or `over` Window representation may request one local host-rendered
-Surface. The capability follows the same desktop-local targeting model as
-`localMove()` and `localResize()`; it is command-only and has no server-owned
-state:
+An `under` or `over` representation may request one local host-rendered Surface:
 
 ```ts
-await window.surface.set({
+await current.localWindow.surface.set({
   opacity: 0.65,
-  radius: "large",
-  transaction: { duration: 240, easing: "ease-out" }
-})
+  radius: "large"
+}, { duration: 240, easing: "ease-out", wait: true })
 
-await window.surface.remove()
+await current.localWindow.surface.remove()
 ```
 
-The desktop holds the target only for the lifetime of the addressed iframe.
-Reloading or destroying that representation removes it; another accessible
-Window handle may tailor the same local representation, while other desktops
-remain unaffected. Program code may synchronize desired settings through its
-Server and explicitly apply them again. `set()` with no settings creates a
-sharp, fully opaque Surface.
+The desktop holds local state only for the lifetime of that iframe
+representation. Reloading or destroying it resets the representation from
+authoritative truth, while other desktops remain unaffected. Program code may
+synchronize desired settings through its Server and explicitly apply them
+again. `set()` with no settings creates a sharp, fully opaque Surface.
 Opacity is a finite number from `0` through `1`; zero retains the Surface node.
 Radius accepts a nonnegative pixel number, a Theme-derived `ScaleLevel`, or
 `"full"`. Only `remove()` restores exact `null` and immediately removes the

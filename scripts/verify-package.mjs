@@ -80,6 +80,7 @@ assert.equal(Server, core.Server)
 assert.equal(Client, core.Client)
 assert.equal(typeof current.process, "function")
 assert.equal(typeof current.window, "object")
+assert.equal(typeof current.localWindow, "object")
 assert.equal(typeof current.enableService, "function")
 assert.equal(typeof current.disableService, "function")
 assert.equal("enableService" in current.server, false)
@@ -87,10 +88,10 @@ assert.equal("disableService" in current.server, false)
 assert.equal(typeof host.theme.snapshot, "function")
 assert.equal(typeof host.surface.size, "function")
 assert.equal(typeof host.pointer.position, "function")
-assert.equal(typeof current.window.surface.set, "function")
-assert.equal(typeof current.window.surface.remove, "function")
-assert.equal("snapshot" in current.window.surface, false)
-assert.equal("subscribe" in current.window.surface, false)
+assert.equal(typeof current.localWindow.surface.set, "function")
+assert.equal(typeof current.localWindow.surface.remove, "function")
+assert.equal("snapshot" in current.localWindow.surface, false)
+assert.equal("subscribe" in current.localWindow, false)
 assert.equal(typeof current.permissions.granted, "function")
 assert.equal(typeof current.permissions.request, "function")
 assert.equal("permissions" in host, false)
@@ -124,7 +125,11 @@ const counterDocs: Promise<string | null> = counter.docs()
 const expose: Promise<void> = current.enableService({ name: "state" })
 const surface = host.surface.subscribe("resize", size => void size.width)
 const pointer = host.pointer.subscribe("move", position => void position.x)
-const clientSurface: Promise<void> = current.window.surface.set({ opacity: 0.5 })
+const clientSurface: Promise<void> = current.localWindow.surface.set({ opacity: 0.5 }, { easing: "ease-out", wait: true })
+const localGeometry: Promise<void> = current.localWindow.setGeometry({
+  position: { x: 20, y: 20 },
+  size: { width: 420, height: 280 }
+}, { duration: 180 })
 const geometry: Promise<void> = current.window.setGeometry({
   position: { x: "0/1", y: "0/1" },
   size: { width: "1/2", height: "1/2" }
@@ -140,6 +145,7 @@ void current.program().then(program => {
   const samePermissions: typeof current.permissions = program.permissions
   void samePermissions.granted("pointer")
 })
+void localGeometry
 
 void theme
 void counter

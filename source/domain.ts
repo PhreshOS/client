@@ -11,7 +11,6 @@ import {
   type AskMessage as CoreAskMessage,
   type AskObserver as CoreAskObserver,
   type Cleanup,
-  type ClientSurfaceSettings,
   type ClientTraffic as CoreClientTraffic,
   type ClientDeclaration,
   type EndpointTraffic as CoreEndpointTraffic,
@@ -176,26 +175,8 @@ export type Client<Events extends object = {}> = Omit<CoreClient<Events>, "proce
   process(): Promise<Process>
 }
 
-/** Client-owned Window capability visible inside a Client boundary. */
-export type Window = CoreWindow & {
-  /** Host-rendered material belonging only to this desktop representation. */
-  readonly surface: ClientWindowSurface
-
-  /** Moves this Window representation without changing authoritative state. */
-  localMove(position: Position): Promise<void>
-
-  /** Resizes this Window representation without changing authoritative state. */
-  localResize(size: Size): Promise<void>
-}
-
-/** Command-only Surface of one Window representation on this desktop. */
-export interface ClientWindowSurface {
-  /** Creates or replaces the representation-local Surface. */
-  set(settings?: ClientSurfaceSettings): Promise<void>
-
-  /** Immediately removes the representation-local Surface. */
-  remove(): Promise<void>
-}
+/** Authoritative Client-owned Window capability visible inside a Client boundary. */
+export type Window = CoreWindow
 
 const handles = new HandleRegistry()
 const ProgramBase = CoreProgram as unknown as new () => object
@@ -422,11 +403,8 @@ class ClientHandle extends ClientBase {
 }
 
 class WindowHandle extends Events {
-  public readonly surface: ClientWindowSurface
-
   public constructor(private readonly target: WindowTarget) {
     super(...deferredScoped("host-end", target, (_event, values) => values[0]))
-    this.surface = new ClientWindowSurfaceHandle(target)
   }
 
   private async state() {
@@ -442,20 +420,11 @@ class WindowHandle extends Events {
   public async layer() { return (await this.state()).layer }
   public async location() { return (await this.state()).location }
   public async move(position: Position) { await wire.request(["move", await this.target(), position]) }
-  public async localMove(position: Position) { await wire.request(["localMove", await this.target(), position]) }
   public async resize(size: Size) { await wire.request(["resize", await this.target(), size]) }
   public async setGeometry(geometry: WindowGeometry) { await wire.request(["setGeometry", await this.target(), geometry]) }
-  public async localResize(size: Size) { await wire.request(["localResize", await this.target(), size]) }
   public async minimize(minimized = true) { await wire.request(["minimize", await this.target(), minimized]) }
   public async changeTitle(title: string) { await wire.request(["changeTitle", await this.target(), title]) }
   public async raise() { await wire.request(["raise", await this.target()]) }
-}
-
-class ClientWindowSurfaceHandle implements ClientWindowSurface {
-  public constructor(private readonly target: WindowTarget) {}
-
-  public async set(settings: ClientSurfaceSettings = {}) { await wire.request(["surfaceSet", await this.target(), settings]) }
-  public async remove() { await wire.request(["surfaceRemove", await this.target()]) }
 }
 
 type WindowTarget = () => Promise<HandleAddress>

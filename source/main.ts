@@ -19,7 +19,6 @@ export {
   Process,
   Program,
   Server,
-  type ClientWindowSurface,
   type Window,
   type AnswerCapture,
   type AnswerMessage,
@@ -87,7 +86,9 @@ export type {
   WindowGeometry,
   WindowLayer,
   WindowState,
-  ClientSurfaceEasing,
-  ClientSurfaceSettings,
-  ClientSurfaceTransaction
+  Easing,
+  LocalWindow,
+  LocalWindowSurface,
+  SurfaceSettings,
+  Transaction
 } from "@phreshos/core"
