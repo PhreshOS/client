@@ -114,16 +114,10 @@ Promises confirm that the current Client host accepted and applied the local
 draft; they do not enter server authority or emit Window events.
 
 An `under` or `over` Client may own one authoritative host-rendered Surface.
-The capability remains silent until Program code explicitly reads, changes, or
-subscribes to it:
+The capability is command-only: Program code may change or remove it, but
+cannot read or subscribe to its server-owned state:
 
 ```ts
-const initial = await window.surface.snapshot()
-
-const stop = window.surface.subscribe("change", surface => {
-  // Future replacements only; subscriptions do not replay `initial`.
-})
-
 await window.surface.set({
   opacity: 0.65,
   radius: "large",
@@ -133,14 +127,14 @@ await window.surface.set({
 await window.surface.remove()
 ```
 
-The server stores the target beside its Window and broadcasts complete future
-replacements. `set()` with no settings creates a sharp, fully opaque Surface.
+The server stores the target beside its Window and delivers it internally to
+the desktop. `set()` with no settings creates a sharp, fully opaque Surface.
 Opacity is a finite number from `0` through `1`; zero retains the Surface node.
 Radius accepts a nonnegative pixel number, a Theme-derived `ScaleLevel`, or
 `"full"`. Only `remove()` restores exact `null` and immediately removes the
 node. The optional transaction uses milliseconds and a stable named or cubic
 Bézier easing; the desktop performs the motion, honors reduced motion, and does
-not replay a stored transaction when restoring an initial snapshot. The sharp
+does not replay a stored transaction when restoring desktop state. The sharp
 container follows the iframe geometry while the independently rounded Surface
 neither clips nor masks Client content. `window` and `wallpaper` layers reject
 the capability.

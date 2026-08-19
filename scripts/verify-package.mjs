@@ -83,6 +83,8 @@ assert.equal(typeof current.window, "object")
 assert.equal(typeof host.theme.snapshot, "function")
 assert.equal(typeof host.surface.size, "function")
 assert.equal(typeof host.pointer.position, "function")
+assert.equal("snapshot" in current.window.surface, false)
+assert.equal("subscribe" in current.window.surface, false)
 assert.equal(messages.length, 1)
 assert.equal(messages[0][0], "boundary")
 assert.equal(messages[0][1], "document")
@@ -101,10 +103,11 @@ assert.equal(typeof messages[0][2], "string")
 const theme: Promise<Readonly<ThemeProperties>> = host.theme.snapshot()
 const surface = host.surface.subscribe("resize", size => void size.width)
 const pointer = host.pointer.subscribe("move", position => void position.x)
-const windowSurface = current.window.surface.subscribe("change", settings => void settings)
+const windowSurface: Promise<void> = current.window.surface.set({ opacity: 0.5 })
 const server: Server = current.server
 void current.process().then(process => {
   const client: Client | null = process.client
+  if (client) void client.start({ title: "Prepared title" })
   void client
 })
 

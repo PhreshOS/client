@@ -77,7 +77,6 @@ export type {
   WindowState,
   WindowSurface,
   WindowSurfaceEasing,
-  WindowSurfaceEvents,
   WindowSurfaceSettings,
   WindowSurfaceTransaction
 } from "@phreshos/core"
