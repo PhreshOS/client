@@ -71,7 +71,7 @@ const messages = []
 const parent = { postMessage: message => messages.push(message) }
 globalThis.window = { parent, addEventListener() {} }
 
-const { Client, Endpoint, Process, Program, Server, current, host } = await import("@phreshos/client")
+const { Client, Endpoint, Process, Program, Server, ServerServiceHandler, ServiceHandler, current, host } = await import("@phreshos/client")
 
 assert.equal(Program, core.Program)
 assert.equal(Process, core.Process)
@@ -80,11 +80,19 @@ assert.equal(Server, core.Server)
 assert.equal(Client, core.Client)
 assert.equal(typeof current.process, "function")
 assert.equal(typeof current.window, "object")
+assert.equal(typeof current.enableService, "function")
+assert.equal(typeof current.disableService, "function")
+assert.equal("enableService" in current.server, false)
+assert.equal("disableService" in current.server, false)
 assert.equal(typeof host.theme.snapshot, "function")
 assert.equal(typeof host.surface.size, "function")
 assert.equal(typeof host.pointer.position, "function")
 assert.equal("snapshot" in current.window.surface, false)
 assert.equal("subscribe" in current.window.surface, false)
+const service = host.service({ program: "counter", endpoint: "server", name: "state" })
+assert.equal(service, host.service({ program: "counter", endpoint: "server", name: "state" }))
+assert(service instanceof ServiceHandler)
+assert(service instanceof ServerServiceHandler)
 assert.equal(messages.length, 1)
 assert.equal(messages[0][0], "boundary")
 assert.equal(messages[0][1], "document")
@@ -98,9 +106,15 @@ assert.equal(typeof messages[0][2], "string")
 
   writeFileSync(
     join(consumer, "consumer.ts"),
-    `import { current, host, Client, Server, type ThemeProperties } from "@phreshos/client"
+    `import { current, host, Client, Server, type ServerServiceHandler, type ThemeProperties } from "@phreshos/client"
+
+type CounterEvents = { change: number }
 
 const theme: Promise<Readonly<ThemeProperties>> = host.theme.snapshot()
+const counter: ServerServiceHandler<CounterEvents> = host.service<CounterEvents>({ program: "counter", endpoint: "server", name: "state" })
+const counterStop = counter.channel.subscribe("change", value => void value)
+const counterAnswer: Promise<number> = counter.channel.ask<number>("value")
+const expose: Promise<void> = current.enableService("state")
 const surface = host.surface.subscribe("resize", size => void size.width)
 const pointer = host.pointer.subscribe("move", position => void position.x)
 const windowSurface: Promise<void> = current.window.surface.set({ opacity: 0.5 })
@@ -112,6 +126,10 @@ void current.process().then(process => {
 })
 
 void theme
+void counter
+void counterStop
+void counterAnswer
+void expose
 void surface
 void pointer
 void windowSurface

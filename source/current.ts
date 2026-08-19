@@ -21,12 +21,13 @@ import {
   type Window
 } from "./domain.js"
 import wire from "./wire.js"
+import { endpointService } from "./service.js"
 
 /** The current Process's canonical Server handle. */
 export type CurrentServer<Events extends object = {}> = Server<Events>
 
 /** Current Client context: its inbound Channel, owner hierarchy, and paired Server. */
-export interface Current<Events extends object = {}> extends CoreChannel<Events, Endpoint | null> {
+export interface Current<Events extends object = {}> extends CoreChannel<Events, Endpoint | null>, Pick<Client, "service"> {
   /** The same Server handle exposed by the current Process. */
   readonly server: CurrentServer
 
@@ -47,6 +48,7 @@ export interface Current<Events extends object = {}> extends CoreChannel<Events,
 
   /** Stops the current Client; rejects when it is the final live Endpoint. */
   stop(): Promise<void>
+
 }
 
 const ServerBase = Server as unknown as new () => object
@@ -70,6 +72,7 @@ class CurrentServerHandle extends ServerBase {
 
   public async start() { await wire.request(["start-endpoint", undefined, "server"]) }
   public async stop() { await wire.request(["stop-endpoint", undefined, "server"]) }
+  public service<ServiceEvents extends object = {}>() { return endpointService<ServiceEvents>(null, "server") }
   public async waitReady(timeout?: number) { await wire.request(["wait-ready"], timeout) }
 
   public async ask<Answer = unknown>(event: string, payload: unknown = undefined) {
@@ -136,6 +139,7 @@ class CurrentClientHandle extends ClientBase {
 
   public async start(overrides: LaunchClient = {}) { await wire.request(["start-endpoint", undefined, "client", overrides]) }
   public async stop() { await wire.request(["stop-endpoint", undefined, "client"]) }
+  public service<ServiceEvents extends object = {}>() { return endpointService<ServiceEvents>(null, "client") }
 }
 
 currentClient = new CurrentClientHandle(owner) as unknown as Client
@@ -166,6 +170,7 @@ class ClientCurrent {
   }
 
   public async stop() { await wire.request(["stop-current"]) }
+  public service<ServiceEvents extends object = {}>() { return endpointService<ServiceEvents>(null, "client") }
 }
 
 function bindChannel(target: object, source: Channel) {
@@ -174,7 +179,9 @@ function bindChannel(target: object, source: Channel) {
     subscribe: source.subscribe.bind(source),
     waitFor: source.waitFor.bind(source),
     events: source.events.bind(source),
-    observe: source.observe.bind(source)
+    observe: source.observe.bind(source),
+    enableService: source.enableService.bind(source),
+    disableService: source.disableService.bind(source)
   })
 }
 

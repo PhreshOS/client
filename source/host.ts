@@ -1,10 +1,18 @@
-import type { Permissions, ServedFile, Theme, ThemeProperties } from "@phreshos/core"
+import type {
+  ClientServiceHandler,
+  Permissions,
+  ServedFile,
+  ServerServiceHandler,
+  Theme,
+  ThemeProperties
+} from "@phreshos/core"
 import { content } from "./content.js"
 import ClientTheme from "./theme.js"
 import wire from "./wire.js"
 import ClientPermissions from "./permissions.js"
 import ClientPointer, { type HostPointer } from "./pointer.js"
 import ClientSurface, { type HostSurface } from "./surface.js"
+import { service as serviceHandle } from "./service.js"
 
 /** Desktop capabilities structurally available to a Client endpoint. */
 export interface Host {
@@ -25,6 +33,20 @@ export interface Host {
 
   /** Performs an unrestricted server-side fetch on behalf of this Client. */
   fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>
+
+  /** Returns a stable handle for one exact Server service identity. */
+  service<ServiceEvents extends object = {}>(key: {
+    program: string
+    endpoint: "server"
+    name: string
+  }): ServerServiceHandler<ServiceEvents>
+
+  /** Returns a stable handle for one exact Client service identity. */
+  service<ServiceEvents extends object = {}>(key: {
+    program: string
+    endpoint: "client"
+    name: string
+  }): ClientServiceHandler<ServiceEvents>
 }
 
 class ClientHost {
@@ -119,6 +141,12 @@ class ClientHost {
     })
 
     return response
+  }
+
+  public service<ServiceEvents extends object = {}>(key: { program: string, endpoint: "server", name: string }): ServerServiceHandler<ServiceEvents>
+  public service<ServiceEvents extends object = {}>(key: { program: string, endpoint: "client", name: string }): ClientServiceHandler<ServiceEvents>
+  public service(key: { program: string, endpoint: "server" | "client", name: string }) {
+    return serviceHandle(key)
   }
 
 }

@@ -4,6 +4,16 @@ export { type HostSurface, type Surface, type SurfaceEvents } from "./surface.js
 export { current, type Current, type CurrentServer } from "./current.js"
 export { type Channel, type ChannelCapture, type ChannelEvents, type ChannelMessage } from "./channel.js"
 export {
+  ClientServiceHandler,
+  ServerServiceHandler,
+  ServiceHandler,
+  type ClientServiceChannel,
+  type ServerServiceChannel,
+  type ServiceChannel,
+  type ServiceKey,
+  type ServiceLifecycleEvents
+} from "@phreshos/core"
+export {
   Client,
   Endpoint,
   Process,

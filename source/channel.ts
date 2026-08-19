@@ -7,6 +7,7 @@ import type {
 import { visibleEndpoint, type Endpoint, type EndpointReference } from "./domain.js"
 import Events from "./events.js"
 import wire from "./wire.js"
+import { disableCurrentService, enableCurrentService } from "./service.js"
 
 /** One value addressed to the current Client, with a client-visible sender. */
 export type ChannelMessage<Payload = unknown> = CoreChannelMessage<Payload, Endpoint | null>
@@ -33,6 +34,9 @@ class ClientChannel extends Events {
   public publish(event: string, payload: unknown = undefined) {
     wire.send("end-host", "emit", event, payload)
   }
+
+  public async enableService(name: string) { await enableCurrentService(name) }
+  public async disableService() { await disableCurrentService() }
 }
 
 function message(value: unknown): ChannelMessage {

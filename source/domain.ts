@@ -35,6 +35,7 @@ import Deadline from "./deadline.js"
 import HandleRegistry from "./handle-registry.js"
 import { area, sql, store } from "./storage.js"
 import wire from "./wire.js"
+import { endpointService } from "./service.js"
 
 export interface HandleAddress {
   identity: string
@@ -356,6 +357,7 @@ class ServerHandle extends ServerBase {
 
   public async start() { await wire.request(["start-endpoint", this.owner.address, "server"]) }
   public async stop() { await wire.request(["stop-endpoint", this.owner.address, "server"]) }
+  public service<ServiceEvents extends object = {}>() { return endpointService<ServiceEvents>(this.owner.address, "server") }
   public async waitReady(timeout?: number) { await wire.request(["wait-ready", this.owner.address], timeout) }
 
   public async ask<Answer = unknown>(event: string, payload: unknown = undefined) {
@@ -401,6 +403,7 @@ class ClientHandle extends ClientBase {
 
   public async start(overrides: LaunchClient = {}) { await wire.request(["start-endpoint", this.owner.address, "client", overrides]) }
   public async stop() { await wire.request(["stop-endpoint", this.owner.address, "client"]) }
+  public service<ServiceEvents extends object = {}>() { return endpointService<ServiceEvents>(this.owner.address, "client") }
 
 }
 
