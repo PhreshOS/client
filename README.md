@@ -18,7 +18,7 @@ a peer dependency. It does not redefine those objects, own server-side
 capabilities, or contain host and transport implementations.
 
 Its `Host` contract exposes only desktop-session capabilities: the public
-system Theme, surface and pointer state, publicly served values, and
+system Theme, desktop and pointer state, publicly served values, and
 unrestricted server-side Fetch. `host.theme.snapshot()` explicitly and
 asynchronously reads the current snapshot retained by the desktop host.
 `host.theme.subscribe("change", listener)` is an ordinary live subscription:
@@ -26,22 +26,23 @@ it receives only complete replacements published after registration, with no
 initial value or replay. The Client cannot write the authoritative value. The
 Host does not expose system-wide Program or Process discovery.
 
-Surface and pointer access are independent objects rather than events merged
+Desktop and pointer access are independent objects rather than events merged
 into Host:
 
 ```ts
-const surface = await host.surface.size()
-const stopSurface = host.surface.subscribe("resize", next => undefined)
+const desktop = await host.desktop.size()
+const stopDesktop = host.desktop.subscribe("resize", next => undefined)
 
 const position = await host.pointer.position()
 const stopPointer = host.pointer.subscribe("move", next => undefined)
 ```
 
-A Surface contains only the width and height of the current Client Window's
-own layer. Client code cannot select another layer, and the desktop's gutter
-never enters an endpoint. Pointer position and movement both require the
-`pointer` permission. Reads are asynchronous requests; subscriptions receive
-only future publications and never replay a retained value.
+The desktop size is the complete desktop area containing this Client,
+independent of the Client Window's layer. Client code cannot select a layer,
+and the desktop's gutter never enters an endpoint. Pointer position and
+movement both require the `pointer` permission. Reads are asynchronous
+requests; subscriptions receive only future publications and never replay a
+retained value.
 
 Permission decisions belong to the current Program, not to the desktop Host.
 They are available from a Program handle and flattened through `current` as the

@@ -86,7 +86,8 @@ assert.equal(typeof current.disableService, "function")
 assert.equal("enableService" in current.server, false)
 assert.equal("disableService" in current.server, false)
 assert.equal(typeof host.theme.snapshot, "function")
-assert.equal(typeof host.surface.size, "function")
+assert.equal(typeof host.desktop.size, "function")
+assert.equal("surface" in host, false)
 assert.equal(typeof host.pointer.position, "function")
 assert.equal(typeof current.localWindow.surface.set, "function")
 assert.equal(typeof current.localWindow.surface.remove, "function")
@@ -113,17 +114,18 @@ assert.equal(typeof messages[0][2], "string")
 
   writeFileSync(
     join(consumer, "consumer.ts"),
-    `import { current, host, Client, Server, type ServerServiceHandler, type ThemeProperties } from "@phreshos/client"
+    `import { current, host, Client, Server, type HostDesktop, type ServerServiceHandler, type ThemeProperties } from "@phreshos/client"
 
 type CounterEvents = { change: number }
 
 const theme: Promise<Readonly<ThemeProperties>> = host.theme.snapshot()
+const hostDesktop: HostDesktop = host.desktop
 const counter: ServerServiceHandler<CounterEvents> = host.service<CounterEvents>({ program: "counter", endpoint: "server", name: "state" })
 const counterStop = counter.channel.subscribe("change", value => void value)
 const counterAnswer: Promise<number> = counter.channel.ask<number>("value")
 const counterDocs: Promise<string | null> = counter.docs()
 const expose: Promise<void> = current.enableService({ name: "state" })
-const surface = host.surface.subscribe("resize", size => void size.width)
+const desktop = host.desktop.subscribe("resize", size => void size.width)
 const pointer = host.pointer.subscribe("move", position => void position.x)
 const clientSurface: Promise<void> = current.localWindow.surface.set({ opacity: 0.5 }, { easing: "ease-out", wait: true })
 const localGeometry: Promise<void> = current.localWindow.setGeometry({
@@ -148,12 +150,13 @@ void current.program().then(program => {
 void localGeometry
 
 void theme
+void hostDesktop
 void counter
 void counterStop
 void counterAnswer
 void counterDocs
 void expose
-void surface
+void desktop
 void pointer
 void clientSurface
 void geometry

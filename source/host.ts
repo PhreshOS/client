@@ -9,7 +9,7 @@ import { content } from "./content.js"
 import ClientTheme from "./theme.js"
 import wire from "./wire.js"
 import ClientPointer, { type HostPointer } from "./pointer.js"
-import ClientSurface, { type HostSurface } from "./surface.js"
+import ClientDesktop, { type HostDesktop } from "./desktop.js"
 import { service as serviceHandle } from "./service.js"
 
 /** Desktop capabilities structurally available to a Client endpoint. */
@@ -17,8 +17,8 @@ export interface Host {
   /** Read-only system Theme explicitly read from and observed through the desktop host. */
   readonly theme: Theme<ThemeProperties>
 
-  /** This Client Window's asynchronous surface read and live updates. */
-  readonly surface: HostSurface
+  /** Layer-independent desktop size reads and live updates. */
+  readonly desktop: HostDesktop
 
   /** Permission-guarded desktop pointer reads and live movement. */
   readonly pointer: HostPointer
@@ -46,7 +46,7 @@ export interface Host {
 
 class ClientHost {
   public readonly theme = new ClientTheme() as unknown as Theme<ThemeProperties>
-  public readonly surface = new ClientSurface() as unknown as HostSurface
+  public readonly desktop = new ClientDesktop() as unknown as HostDesktop
   public readonly pointer = new ClientPointer() as unknown as HostPointer
 
   public async serve(value: unknown): Promise<ServedFile> {
