@@ -128,10 +128,11 @@ The same rule applies to Client-visible traffic destinations.
 
 Client-visible Program handles can operate only within their own Program.
 They deliberately omit `install()` and `fork()`, and their storage areas never
-expose host filesystem paths. `current.window` is authoritative and
-subscribable. `current.localWindow` is the physical representation belonging to
-this iframe on this desktop. Its reads and updates are local, have no events,
-and cannot target another Client handle.
+expose host filesystem paths. Every Client-side Window handle exposes the same
+authoritative, subscribable Window capability and its `window.local` physical
+representation on this desktop. Local reads and updates have no events and do
+not change Server state. `current.window` is only convenient access to the
+executing Client's canonical Window; it has no additional authority.
 When both dimensions must change, `setGeometry({ position, size })` commits
 them through one authoritative request and produces one `geometry` event.
 Calling `move()` and `resize()` sequentially or through `Promise.all()` remains
@@ -140,12 +141,12 @@ two independent operations and can expose an intermediate state remotely.
 An `under` or `over` representation may request one local host-rendered Surface:
 
 ```ts
-await current.localWindow.surface.set({
+await current.window.local.surface.set({
   opacity: 0.65,
   radius: "large"
 }, { duration: 240, easing: "ease-out", wait: true })
 
-await current.localWindow.surface.remove()
+await current.window.local.surface.remove()
 ```
 
 The desktop holds local state only for the lifetime of that iframe

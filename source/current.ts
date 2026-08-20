@@ -1,4 +1,4 @@
-import type { LaunchClient, LocalWindow, Position, Size, SurfaceSettings, Transaction, WindowGeometry, WindowState } from "@phreshos/core"
+import type { LaunchClient } from "@phreshos/core"
 import { channel, type Channel } from "./channel.js"
 import Deadline from "./deadline.js"
 import {
@@ -33,9 +33,6 @@ export interface Current<Events extends object = {}> extends Channel<Events>, Pi
 
   /** Presentation capability of this current Client. */
   readonly window: Window
-
-  /** Physical Window representation belonging only to this Client iframe. */
-  readonly localWindow: LocalWindow
 
   /** The same permission capability exposed by the current Program. */
   readonly permissions: Program["permissions"]
@@ -153,7 +150,6 @@ currentClient = new CurrentClientHandle(owner) as unknown as Client
 class ClientCurrent {
   public readonly server = currentServer
   public readonly window = currentClient.window
-  public readonly localWindow = new LocalWindowHandle()
   public readonly permissions = currentProgramPermissions
 
   public constructor() {
@@ -179,34 +175,6 @@ class ClientCurrent {
 
   public async stop() { await wire.request(["stop-current"]) }
   public service<ServiceEvents extends object = {}>() { return endpointService<ServiceEvents>(null, "client") }
-}
-
-class LocalWindowHandle implements LocalWindow {
-  public readonly surface = new LocalWindowSurfaceHandle()
-
-  private async state() {
-    const answer = await wire.request(["localWindow"]) as [WindowState]
-    return answer[0]
-  }
-
-  public async title() { return (await this.state()).title }
-  public async position() { return (await this.state()).position }
-  public async size() { return (await this.state()).size }
-  public async minimized() { return (await this.state()).minimized }
-  public async front() { return (await this.state()).front }
-  public async layer() { return (await this.state()).layer }
-  public async location() { return (await this.state()).location }
-  public async move(position: Position, transaction?: Transaction) { await wire.request(["localWindowMove", position, transaction]) }
-  public async resize(size: Size, transaction?: Transaction) { await wire.request(["localWindowResize", size, transaction]) }
-  public async setGeometry(geometry: WindowGeometry, transaction?: Transaction) { await wire.request(["localWindowGeometry", geometry, transaction]) }
-  public async minimize(minimized = true) { await wire.request(["localWindowMinimize", minimized]) }
-  public async changeTitle(title: string) { await wire.request(["localWindowTitle", title]) }
-  public async raise() { await wire.request(["localWindowRaise"]) }
-}
-
-class LocalWindowSurfaceHandle {
-  public async set(settings: SurfaceSettings = {}, transaction?: Transaction) { await wire.request(["localWindowSurfaceSet", settings, transaction]) }
-  public async remove() { await wire.request(["localWindowSurfaceRemove"]) }
 }
 
 function bindChannel(target: object, source: Channel) {

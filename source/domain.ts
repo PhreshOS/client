@@ -18,18 +18,21 @@ import {
   type Exit,
   type Launch,
   type LaunchClient,
+  type LocalWindow,
   type Outcome,
   type Permissions,
   type Position,
   type ProgramIconSize,
   type ServerTraffic as CoreServerTraffic,
   type Size,
+  type SurfaceSettings,
   type TrafficMessage as CoreTrafficMessage,
   type TrafficCapture as CoreTrafficCapture,
   type TrafficEvents as CoreTrafficEvents,
   type Window as CoreWindow,
   type WindowGeometry,
-  type WindowState
+  type WindowState,
+  type Transaction
 } from "@phreshos/core"
 import Events from "./events.js"
 import Deadline from "./deadline.js"
@@ -175,8 +178,11 @@ export type Client<Events extends object = {}> = Omit<CoreClient<Events>, "proce
   process(): Promise<Process>
 }
 
-/** Authoritative Client-owned Window capability visible inside a Client boundary. */
-export type Window = CoreWindow
+/** Authoritative Window state plus its representation on this desktop. */
+export type Window = CoreWindow & {
+  /** Physical representation of this Window on the current desktop. */
+  readonly local: LocalWindow
+}
 
 const handles = new HandleRegistry()
 const ProgramBase = CoreProgram as unknown as new () => object
@@ -403,8 +409,11 @@ class ClientHandle extends ClientBase {
 }
 
 class WindowHandle extends Events {
+  public readonly local: LocalWindow
+
   public constructor(private readonly target: WindowTarget) {
     super(...deferredScoped("host-end", target, (_event, values) => values[0]))
+    this.local = new LocalWindowHandle(target)
   }
 
   private async state() {
@@ -425,6 +434,43 @@ class WindowHandle extends Events {
   public async minimize(minimized = true) { await wire.request(["minimize", await this.target(), minimized]) }
   public async changeTitle(title: string) { await wire.request(["changeTitle", await this.target(), title]) }
   public async raise() { await wire.request(["raise", await this.target()]) }
+}
+
+class LocalWindowHandle implements LocalWindow {
+  public readonly surface: LocalWindowSurfaceHandle
+
+  public constructor(private readonly target: WindowTarget) {
+    this.surface = new LocalWindowSurfaceHandle(target)
+  }
+
+  private async state() {
+    const answer = await wire.request(["windowLocal", await this.target()]) as [WindowState]
+    return answer[0]
+  }
+
+  public async title() { return (await this.state()).title }
+  public async position() { return (await this.state()).position }
+  public async size() { return (await this.state()).size }
+  public async minimized() { return (await this.state()).minimized }
+  public async front() { return (await this.state()).front }
+  public async layer() { return (await this.state()).layer }
+  public async location() { return (await this.state()).location }
+  public async move(position: Position, transaction?: Transaction) { await wire.request(["windowLocalMove", await this.target(), position, transaction]) }
+  public async resize(size: Size, transaction?: Transaction) { await wire.request(["windowLocalResize", await this.target(), size, transaction]) }
+  public async setGeometry(geometry: WindowGeometry, transaction?: Transaction) { await wire.request(["windowLocalGeometry", await this.target(), geometry, transaction]) }
+  public async minimize(minimized = true) { await wire.request(["windowLocalMinimize", await this.target(), minimized]) }
+  public async changeTitle(title: string) { await wire.request(["windowLocalTitle", await this.target(), title]) }
+  public async raise() { await wire.request(["windowLocalRaise", await this.target()]) }
+}
+
+class LocalWindowSurfaceHandle {
+  public constructor(private readonly target: WindowTarget) {}
+
+  public async set(settings: SurfaceSettings = {}, transaction?: Transaction) {
+    await wire.request(["windowLocalSurfaceSet", await this.target(), settings, transaction])
+  }
+
+  public async remove() { await wire.request(["windowLocalSurfaceRemove", await this.target()]) }
 }
 
 type WindowTarget = () => Promise<HandleAddress>

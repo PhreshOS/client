@@ -81,7 +81,8 @@ assert.equal(Server, core.Server)
 assert.equal(Client, core.Client)
 assert.equal(typeof current.process, "function")
 assert.equal(typeof current.window, "object")
-assert.equal(typeof current.localWindow, "object")
+assert.equal(typeof current.window.local, "object")
+assert.equal("localWindow" in current, false)
 assert.equal(typeof current.enableService, "function")
 assert.equal(typeof current.disableService, "function")
 assert.equal("enableService" in current.server, false)
@@ -90,10 +91,10 @@ assert.equal(typeof host.theme.snapshot, "function")
 assert.equal(typeof host.desktop.size, "function")
 assert.equal("surface" in host, false)
 assert.equal(typeof host.pointer.position, "function")
-assert.equal(typeof current.localWindow.surface.set, "function")
-assert.equal(typeof current.localWindow.surface.remove, "function")
-assert.equal("snapshot" in current.localWindow.surface, false)
-assert.equal("subscribe" in current.localWindow, false)
+assert.equal(typeof current.window.local.surface.set, "function")
+assert.equal(typeof current.window.local.surface.remove, "function")
+assert.equal("snapshot" in current.window.local.surface, false)
+assert.equal("subscribe" in current.window.local, false)
 assert.equal(typeof current.permissions.granted, "function")
 assert.equal(typeof current.permissions.request, "function")
 assert.equal("permissions" in host, false)
@@ -132,8 +133,8 @@ const counterDocs: Promise<string | null> = counter.docs()
 const expose: Promise<void> = current.enableService({ name: "state" })
 const desktop = host.desktop.subscribe("resize", size => void size.width)
 const pointer = host.pointer.subscribe("move", position => void position.x)
-const clientSurface: Promise<void> = current.localWindow.surface.set({ opacity: 0.5 }, { easing: "ease-out", wait: true })
-const localGeometry: Promise<void> = current.localWindow.setGeometry({
+const clientSurface: Promise<void> = current.window.local.surface.set({ opacity: 0.5 }, { easing: "ease-out", wait: true })
+const localGeometry: Promise<void> = current.window.local.setGeometry({
   position: { x: 20, y: 20 },
   size: { width: 420, height: 280 }
 }, { duration: 180 })
@@ -145,7 +146,10 @@ const permission: Promise<boolean | null> = current.permissions.request("pointer
 const server: Server = current.server
 void current.process().then(process => {
   const client: Client | null = process.client
-  if (client) void client.start({ title: "Prepared title" })
+  if (client) {
+    void client.start({ title: "Prepared title" })
+    void client.window.local.position()
+  }
   void client
 })
 void current.program().then(program => {
