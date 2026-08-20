@@ -66,6 +66,7 @@ try {
     join(consumer, "runtime.mjs"),
     `import assert from "node:assert/strict"
 import * as core from "@phreshos/core"
+import { decode } from "@msgpack/msgpack"
 
 const messages = []
 const parent = { postMessage: message => messages.push(message) }
@@ -102,9 +103,12 @@ assert(service instanceof ServiceHandler)
 assert(service instanceof ServerServiceHandler)
 assert.equal(typeof service.docs, "function")
 assert.equal(messages.length, 1)
-assert.equal(messages[0][0], "boundary")
-assert.equal(messages[0][1], "document")
-assert.equal(typeof messages[0][2], "string")
+assert(messages[0][0] instanceof Uint8Array)
+assert.equal(messages[0].length, 1)
+const [route, operation, document] = decode(messages[0][0])
+assert.equal(route, "boundary")
+assert.equal(operation, "document")
+assert.equal(typeof document, "string")
 `
   )
   execFileSync(process.execPath, [join(consumer, "runtime.mjs")], {

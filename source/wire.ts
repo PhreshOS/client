@@ -3,6 +3,7 @@ import Deadline from "./deadline.js"
 import type { HandleAddress } from "./domain.js"
 import { defaultTimeout } from "./events.js"
 import captureClientOutput from "./log.js"
+import { deserialize, serialize } from "./messagepack.js"
 
 type Handler = (...values: unknown[]) => unknown
 type Failure = (error: Error) => void
@@ -29,7 +30,15 @@ class Wire {
     window.addEventListener("message", event => {
       if (event.source !== this.parent || !Array.isArray(event.data)) return
 
-      const [route, ...values] = event.data as [string, ...unknown[]]
+      const [bytes, ...attachments] = event.data as unknown[]
+      if (!(bytes instanceof Uint8Array)) return
+
+      let message: unknown
+      try { message = deserialize(bytes, attachments) }
+      catch { return }
+      if (!Array.isArray(message) || typeof message[0] !== "string") return
+
+      const [route, ...values] = message as [string, ...unknown[]]
 
       if (route === "boundary") {
         const [operation, ...rest] = values
@@ -50,7 +59,7 @@ class Wire {
   }
 
   public send(route: string, ...values: unknown[]) {
-    this.parent?.postMessage([route, ...values], "*")
+    this.post([route, ...values])
   }
 
   public request(values: unknown[], timeout = defaultTimeout, transfer: Transferable[] = []): Promise<unknown> {
@@ -131,7 +140,7 @@ class Wire {
           ? [route, "wait", question, publicId, ...values]
           : [route, "wait", question, ...values]
 
-        try { this.parent?.postMessage(message, "*", transfer) }
+        try { this.post(message, transfer) }
         catch (error) {
           this.pending.delete(question)
           this.send("boundary", "forget", question)
@@ -146,6 +155,15 @@ class Wire {
         reject(error)
       })
     })
+  }
+
+  private post(message: unknown[], transfer: Transferable[] = []) {
+    if (!this.parent) return
+
+    const attachments = nativeAttachments(message, transfer)
+    const bytes = serialize(message, attachments)
+
+    this.parent.postMessage([bytes, ...attachments], "*", [bytes.buffer, ...transfer])
   }
 
   public expectWithin(question: string, deadline: Deadline): Promise<unknown> {
@@ -299,6 +317,41 @@ function once(cleanup: Cleanup): Cleanup {
     active = false
     cleanup()
   }
+}
+
+function nativeAttachments(value: unknown, transfer: readonly Transferable[]) {
+  const attachments: object[] = [...transfer]
+  const known = new Set<object>(attachments)
+
+  const visit = (entry: unknown) => {
+    if (entry === null || typeof entry !== "object" || known.has(entry)) return
+    known.add(entry)
+
+    if (entry instanceof Blob) {
+      attachments.push(entry)
+      return
+    }
+
+    if (entry instanceof Date || entry instanceof RegExp || entry instanceof URL || entry instanceof Error || entry instanceof ArrayBuffer || ArrayBuffer.isView(entry)) return
+
+    if (entry instanceof Map) {
+      for (const [key, item] of entry) {
+        visit(key)
+        visit(item)
+      }
+      return
+    }
+
+    if (entry instanceof Set) {
+      for (const item of entry) visit(item)
+      return
+    }
+
+    for (const item of Array.isArray(entry) ? entry : Object.values(entry)) visit(item)
+  }
+
+  visit(value)
+  return attachments
 }
 
 const wire = new Wire()
