@@ -51,17 +51,31 @@ same canonical capability:
 ```ts
 const program = await current.program()
 
-await program.permissions.granted("pointer")
-await current.permissions.request("pointer")
-await current.permissions.timeout(5_000).request("pointer")
+await program.permission.granted("pointer")
+await current.permission.request("pointer")
+await current.permission.timeout(5_000).request("pointer")
 
-current.permissions === program.permissions
+current.permission === program.permission
 ```
 
 `granted()` reads the effective decision without prompting. `request()` asks
 only when no known decision can answer immediately and returns `null` if its
 deadline expires. The desktop remains the internal enforcement boundary, but
 permission ownership does not alter the public shape of `host`.
+
+The Client Host exposes service preparation as its only service-registry
+capability. Preparing a handle does not read or start the service:
+
+```ts
+const service = host.service.prepare({
+  program: "counter",
+  endpoint: "server",
+  name: "state"
+})
+
+await service.waitReady()
+if (await service.enabled()) await service.channel.ask("value")
+```
 
 A Client may traverse `Process.parent()` through any number of ancestors in
 its own Program. The first parent outside that Program is structurally hidden

@@ -20,9 +20,10 @@ import {
   type LaunchClient,
   type LocalWindow,
   type Outcome,
-  type Permissions,
+  type Permission,
   type Position,
   type ProgramIconSize,
+  type ProgramProcess as CoreProgramProcess,
   type ServerTraffic as CoreServerTraffic,
   type Size,
   type SurfaceSettings,
@@ -40,7 +41,7 @@ import HandleRegistry from "./handle-registry.js"
 import { area, sql, store } from "./storage.js"
 import wire from "./wire.js"
 import { endpointService } from "./service.js"
-import { currentProgramPermissions } from "./permissions.js"
+import { currentProgramPermission } from "./permissions.js"
 
 export interface HandleAddress {
   identity: string
@@ -77,24 +78,30 @@ export interface EndpointReference {
 export type WindowRecord = WindowState
 
 /** Program handle visible inside a structurally isolated Client. */
-export type Program<Events extends object = {}> = Omit<CoreProgram<Events>, "processes" | "firstProcess" | "lastProcess" | "getProcess" | "createProcess"> & {
+export type Program<Events extends object = {}> = Omit<CoreProgram<Events>, "process"> & {
   /** Effective permission decisions owned by this Program. */
-  readonly permissions: Permissions
+  readonly permission: Permission
 
+  /** Operations and lifecycle observation for this Program's Processes. */
+  readonly process: ProgramProcess
+}
+
+/** Client-visible Process operations scoped to one Program. */
+export type ProgramProcess = Omit<CoreProgramProcess, "list" | "first" | "last" | "find" | "create"> & {
   /** Returns every live Process of this Program visible to the current Client. */
-  processes(): Promise<Process[]>
+  list(): Promise<Process[]>
 
   /** Returns the earliest-started visible live Process, or `null` when none exist. */
-  firstProcess(): Promise<Process | null>
+  first(): Promise<Process | null>
 
   /** Returns the latest-started visible live Process, or `null` when none exist. */
-  lastProcess(): Promise<Process | null>
+  last(): Promise<Process | null>
 
   /** Finds a visible live Process by runtime identity or Program-local name. */
-  getProcess(identityOrName: string): Promise<Process | null>
+  find(identityOrName: string): Promise<Process | null>
 
   /** Creates one Process of this same Program. */
-  createProcess(launch?: Launch): Promise<Process>
+  create(launch?: Launch): Promise<Process>
 }
 
 /** Process handle visible inside a structurally isolated Client. */
@@ -198,7 +205,8 @@ class ProgramHandle extends ProgramBase {
   public readonly store = store()
   public readonly logs = sql("logs")
   public readonly database = sql("database")
-  public readonly permissions = currentProgramPermissions
+  public readonly permission = currentProgramPermission
+  public readonly process: ProgramProcess
   private record: ProgramRecord
 
   public constructor(record: ProgramRecord) {
@@ -206,7 +214,8 @@ class ProgramHandle extends ProgramBase {
     this.identity = record.identity
     this.reference = record.reference
     this.record = record
-    bindEvents(this, scoped("host-end", record.reference, programEvent))
+    this.process = new ProgramProcessHandle(record.reference) as unknown as ProgramProcess
+    bindEvents(this, scoped("program-host", record.reference, programEvent))
   }
 
   public get name() { return this.record.name }
@@ -218,29 +227,6 @@ class ProgramHandle extends ProgramBase {
   public update(record: ProgramRecord) {
     if (record.reference !== this.reference) throw new Error("A Program handle cannot become another Program")
     this.record = record
-  }
-
-  public async processes() {
-    const answer = await wire.request(["processes"]) as [ProcessRecord[]]
-    return answer[0].map(record => process(record))
-  }
-
-  public async firstProcess() {
-    return chronological(await this.processes())[0] ?? null
-  }
-
-  public async lastProcess() {
-    return chronological(await this.processes()).at(-1) ?? null
-  }
-
-  public async getProcess(identityOrName: string) {
-    const answer = await wire.request(["program-process", undefined, identityOrName]) as [ProcessRecord | null]
-    return answer[0] ? process(answer[0]) : null
-  }
-
-  public async createProcess(launch: Launch = {}) {
-    const answer = await wire.request(["create-process", undefined, launch]) as [ProcessRecord]
-    return process(answer[0])
   }
 
   public async icon(size: ProgramIconSize = "medium") {
@@ -255,9 +241,38 @@ class ProgramHandle extends ProgramBase {
 
   public async uninstall(everything = false) { await wire.request(["uninstall", undefined, everything]) }
   public async forget() { await wire.request(["forget"]) }
+}
+
+class ProgramProcessHandle {
+  public constructor(program: string) {
+    bindEvents(this, scoped("program-process", program, programProcessEvent))
+  }
+
+  public async list() {
+    const answer = await wire.request(["program-process-list"]) as [ProcessRecord[]]
+    return answer[0].map(record => process(record))
+  }
+
+  public async first() {
+    return chronological(await this.list())[0] ?? null
+  }
+
+  public async last() {
+    return chronological(await this.list()).at(-1) ?? null
+  }
+
+  public async find(identityOrName: string) {
+    const answer = await wire.request(["program-process-find", identityOrName]) as [ProcessRecord | null]
+    return answer[0] ? process(answer[0]) : null
+  }
+
+  public async create(launch: Launch = {}) {
+    const answer = await wire.request(["program-process-create", launch]) as [ProcessRecord]
+    return process(answer[0])
+  }
 
   public async exitAll() {
-    const answer = await wire.request(["exit-all"]) as [string[]]
+    const answer = await wire.request(["program-process-exit-all"]) as [string[]]
     return answer[0]
   }
 }
@@ -546,10 +561,14 @@ function unscoped(subject: string | null, values: unknown[]) {
   return values[0] === subject ? values.slice(1) : null
 }
 
-function programEvent(event: string, values: unknown[]): unknown {
+function programProcessEvent(event: string, values: unknown[]): unknown {
   if (event === "endpointStart" || event === "endpointStop") return lifecycleEndpoint(values[0], values[1])
-  if (event === "processCreate") return process(values[0] as ProcessRecord)
-  if (event === "processExit") return { process: process(values[0] as ProcessRecord), ...exit(values[1], values[2]) }
+  if (event === "create") return process(values[0] as ProcessRecord)
+  if (event === "exit") return { process: process(values[0] as ProcessRecord), ...exit(values[1], values[2]) }
+  return undefined
+}
+
+function programEvent(event: string, values: unknown[]): unknown {
   if (event === "uninstall") return { everythingRemoved: values[0] === true }
   return undefined
 }

@@ -11,7 +11,7 @@ import ClientTheme from "./theme.js"
 import wire from "./wire.js"
 import ClientPointer, { type HostPointer } from "./pointer.js"
 import ClientDesktop, { type HostDesktop } from "./desktop.js"
-import { service as serviceHandle } from "./service.js"
+import { prepareService } from "./service.js"
 
 type ServiceEndpoint = ServiceKey["endpoint"]
 
@@ -40,20 +40,26 @@ export interface Host {
   /** Performs an unrestricted server-side fetch on behalf of this Client. */
   fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>
 
+  /** Prepares exact public service handles without exposing the service registry. */
+  readonly service: HostService
+}
+
+/** Exact public service preparation available to a Client endpoint. */
+export interface HostService {
   /** Returns a precisely typed stable handle for either service endpoint. */
-  service<Endpoint extends ServiceEndpoint, ServiceEvents extends object = {}>(
+  prepare<Endpoint extends ServiceEndpoint, ServiceEvents extends object = {}>(
     key: ServiceAddress<Endpoint>
   ): ServiceHandle<Endpoint, ServiceEvents>
 
   /** Returns a stable handle for one exact Server service identity. */
-  service<ServiceEvents extends object = {}>(key: {
+  prepare<ServiceEvents extends object = {}>(key: {
     program: string
     endpoint: "server"
     name: string
   }): ServerServiceHandler<ServiceEvents>
 
   /** Returns a stable handle for one exact Client service identity. */
-  service<ServiceEvents extends object = {}>(key: {
+  prepare<ServiceEvents extends object = {}>(key: {
     program: string
     endpoint: "client"
     name: string
@@ -64,6 +70,7 @@ class ClientHost {
   public readonly theme = new ClientTheme() as unknown as Theme<ThemeProperties>
   public readonly desktop = new ClientDesktop() as unknown as HostDesktop
   public readonly pointer = new ClientPointer() as unknown as HostPointer
+  public readonly service = new ClientHostService() as unknown as HostService
 
   public async serve(value: unknown): Promise<ServedFile> {
     const source = content(value)
@@ -153,15 +160,17 @@ class ClientHost {
     return response
   }
 
-  public service<Endpoint extends ServiceEndpoint, ServiceEvents extends object = {}>(
+}
+
+class ClientHostService {
+  public prepare<Endpoint extends ServiceEndpoint, ServiceEvents extends object = {}>(
     key: ServiceAddress<Endpoint>
   ): ServiceHandle<Endpoint, ServiceEvents>
-  public service<ServiceEvents extends object = {}>(key: ServiceAddress<"server">): ServerServiceHandler<ServiceEvents>
-  public service<ServiceEvents extends object = {}>(key: ServiceAddress<"client">): ClientServiceHandler<ServiceEvents>
-  public service(key: ServiceAddress<ServiceEndpoint>) {
-    return serviceHandle(key)
+  public prepare<ServiceEvents extends object = {}>(key: ServiceAddress<"server">): ServerServiceHandler<ServiceEvents>
+  public prepare<ServiceEvents extends object = {}>(key: ServiceAddress<"client">): ClientServiceHandler<ServiceEvents>
+  public prepare(key: ServiceAddress<ServiceEndpoint>) {
+    return prepareService(key)
   }
-
 }
 
 interface ProxyRequest {

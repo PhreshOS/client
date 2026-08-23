@@ -95,13 +95,17 @@ assert.equal(typeof current.window.local.surface.set, "function")
 assert.equal(typeof current.window.local.surface.remove, "function")
 assert.equal("snapshot" in current.window.local.surface, false)
 assert.equal("subscribe" in current.window.local, false)
-assert.equal(typeof current.permissions.granted, "function")
-assert.equal(typeof current.permissions.request, "function")
-assert.equal("permissions" in host, false)
-const service = host.service({ program: "counter", endpoint: "server", name: "state" })
-assert.equal(service, host.service({ program: "counter", endpoint: "server", name: "state" }))
+assert.equal(typeof current.permission.granted, "function")
+assert.equal(typeof current.permission.request, "function")
+assert.equal("permission" in host, false)
+const service = host.service.prepare({ program: "counter", endpoint: "server", name: "state" })
+assert.equal(service, host.service.prepare({ program: "counter", endpoint: "server", name: "state" }))
 assert(service instanceof ServiceHandler)
 assert(service instanceof ServerServiceHandler)
+assert.equal("program" in service, false)
+assert.equal("endpoint" in service, false)
+assert.equal(typeof service.enabled, "function")
+assert.equal(typeof service.waitReady, "function")
 assert.equal(typeof service.docs, "function")
 assert.equal(messages.length, 1)
 assert(messages[0][0] instanceof Uint8Array)
@@ -126,9 +130,9 @@ type CounterEvents = { change: number }
 const theme: Promise<Readonly<ThemeProperties>> = host.theme.snapshot()
 const hostDesktop: HostDesktop = host.desktop
 const desktopSize: Promise<DesktopSize> = host.desktop.size()
-const counter: ServerServiceHandler<CounterEvents> = host.service<CounterEvents>({ program: "counter", endpoint: "server", name: "state" })
-const clientCounter: ClientServiceHandler<CounterEvents> = host.service<CounterEvents>({ program: "counter", endpoint: "client", name: "state" })
-const inferredClientCounter: ClientServiceHandler = host.service({ program: "counter", endpoint: "client", name: "state" })
+const counter: ServerServiceHandler<CounterEvents> = host.service.prepare<CounterEvents>({ program: "counter", endpoint: "server", name: "state" })
+const clientCounter: ClientServiceHandler<CounterEvents> = host.service.prepare<CounterEvents>({ program: "counter", endpoint: "client", name: "state" })
+const inferredClientCounter: ClientServiceHandler = host.service.prepare({ program: "counter", endpoint: "client", name: "state" })
 const counterStop = counter.channel.subscribe("change", value => void value)
 const counterAnswer: Promise<number> = counter.channel.ask<number>("value")
 const counterDocs: Promise<string | null> = counter.docs()
@@ -144,7 +148,7 @@ const geometry: Promise<void> = current.window.setGeometry({
   position: { x: "0/1", y: "0/1" },
   size: { width: "1/2", height: "1/2" }
 })
-const permission: Promise<boolean | null> = current.permissions.request("pointer")
+const permission: Promise<boolean | null> = current.permission.request("pointer")
 const server: Server = current.server
 void current.process().then(process => {
   const client: Client | null = process.client
@@ -155,8 +159,8 @@ void current.process().then(process => {
   void client
 })
 void current.program().then(program => {
-  const samePermissions: typeof current.permissions = program.permissions
-  void samePermissions.granted("pointer")
+  const samePermission: typeof current.permission = program.permission
+  void samePermission.granted("pointer")
 })
 void localGeometry
 

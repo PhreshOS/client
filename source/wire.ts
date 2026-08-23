@@ -82,7 +82,7 @@ class Wire {
   /** Resolves this endpoint's Process address only for operations that need it. */
   public identity() {
     if (!this.identityPromise) {
-      const resolving = this.request(["process"]).then(value => {
+      const resolving = this.request(["current-process"]).then(value => {
         const [record] = value as [{ identity?: unknown, reference?: unknown }]
         if (typeof record?.identity !== "string" || typeof record.reference !== "string") {
           throw new Error("The desktop returned an invalid Process identity")

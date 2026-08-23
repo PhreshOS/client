@@ -11,7 +11,7 @@ const source = `import type { Host } from "./source/host.js"
 
 declare const host: Host
 
-host.service({ program: "counter", endpoint: "", name: "state" })
+host.service.prepare({ program: "counter", endpoint: "", name: "state" })
 `
 const position = source.indexOf(marker) + "endpoint: \"".length
 const host = {

@@ -1,4 +1,4 @@
-export { host, type Host } from "./host.js"
+export { host, type Host, type HostService } from "./host.js"
 export { type HostPointer, type PointerEvents, type PointerPosition } from "./pointer.js"
 export { type DesktopEvents, type DesktopSize, type HostDesktop } from "./desktop.js"
 export { current, type Current, type CurrentServer } from "./current.js"
@@ -20,6 +20,7 @@ export {
   Program,
   Server,
   type Window,
+  type ProgramProcess,
   type AnswerCapture,
   type AnswerMessage,
   type AnswerObserver,
@@ -60,10 +61,11 @@ export type {
   OtherStat,
   Outcome,
   PermissionDecision,
-  Permissions,
+  Permission,
   Position,
   ProgramArea,
   ProgramEvents,
+  ProgramProcessEvents,
   ProgramProcessExit,
   ProgramSql,
   ProgramStore,
@@ -75,7 +77,7 @@ export type {
   SubscribableEvents,
   SubscribableFallback,
   TimedAskable,
-  TimedPermissions,
+  TimedPermission,
   Timeoutable,
   Theme,
   ThemeEvents,

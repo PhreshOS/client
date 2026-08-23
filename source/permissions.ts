@@ -1,10 +1,10 @@
-import type { PermissionDecision, PermissionName, Permissions, TimedPermissions } from "@phreshos/core"
+import type { Permission, PermissionDecision, PermissionName, TimedPermission } from "@phreshos/core"
 import wire from "./wire.js"
 
 const defaultPermissionTimeout = 30_000
 
 /** Client access to the current Program's effective permission decisions. */
-export default class ClientPermissions implements Permissions {
+export default class ClientPermission implements Permission {
   public async granted(name: PermissionName): Promise<PermissionDecision> {
     const answer = await wire.request(["permission-granted", name]) as [PermissionDecision]
     return answer[0]
@@ -14,7 +14,7 @@ export default class ClientPermissions implements Permissions {
     return this.requestWithin(name, defaultPermissionTimeout)
   }
 
-  public timeout(milliseconds: number): TimedPermissions {
+  public timeout(milliseconds: number): TimedPermission {
     if (!Number.isFinite(milliseconds) || milliseconds < 0) throw new Error("A permission timeout must be a non-negative finite number")
 
     return Object.freeze({ request: (name: PermissionName) => this.requestWithin(name, milliseconds) })
@@ -27,4 +27,4 @@ export default class ClientPermissions implements Permissions {
 }
 
 /** The one Program-owned permission capability visible in this isolated Client. */
-export const currentProgramPermissions = new ClientPermissions()
+export const currentProgramPermission = new ClientPermission()

@@ -21,7 +21,7 @@ import {
 } from "./domain.js"
 import wire from "./wire.js"
 import { endpointService } from "./service.js"
-import { currentProgramPermissions } from "./permissions.js"
+import { currentProgramPermission } from "./permissions.js"
 
 /** The current Process's canonical Server handle. */
 export type CurrentServer<Events extends object = {}> = Server<Events>
@@ -35,7 +35,7 @@ export interface Current<Events extends object = {}> extends Channel<Events>, Pi
   readonly window: Window
 
   /** The same permission capability exposed by the current Program. */
-  readonly permissions: Program["permissions"]
+  readonly permission: Program["permission"]
 
   /** Returns the Process represented by this Client. */
   process(): Promise<Process>
@@ -99,7 +99,7 @@ let currentClient!: Client
 
 function owner() {
   if (!ownerPromise) {
-    const resolving = wire.request(["process"]).then(answer => {
+    const resolving = wire.request(["current-process"]).then(answer => {
       return process((answer as [ProcessRecord])[0], { server: currentServer, client: currentClient })
     })
 
@@ -150,7 +150,7 @@ currentClient = new CurrentClientHandle(owner) as unknown as Client
 class ClientCurrent {
   public readonly server = currentServer
   public readonly window = currentClient.window
-  public readonly permissions = currentProgramPermissions
+  public readonly permission = currentProgramPermission
 
   public constructor() {
     bindChannel(this, channel)
@@ -164,7 +164,7 @@ class ClientCurrent {
   }
 
   public async program() {
-    const answer = await wire.request(["program"]) as [ProgramRecord]
+    const answer = await wire.request(["current-program"]) as [ProgramRecord]
     return program(answer[0])
   }
 
