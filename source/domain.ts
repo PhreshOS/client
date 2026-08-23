@@ -100,7 +100,7 @@ export type Program<Events extends object = {}> = Omit<CoreProgram<Events>, "pro
 }
 
 /** Client-visible Process operations scoped to one Program. */
-export type ProgramProcess = Omit<CoreProgramProcess, "list" | "first" | "last" | "find" | "create"> & {
+export type ProgramProcess = Omit<CoreProgramProcess, "list" | "first" | "last" | "find" | "create" | "findOrCreate"> & {
   /** Returns every live Process of this Program visible to the current Client. */
   list(): Promise<Process[]>
 
@@ -115,6 +115,9 @@ export type ProgramProcess = Omit<CoreProgramProcess, "list" | "first" | "last" 
 
   /** Creates one Process of this same Program. */
   create(launch?: Launch): Promise<Process>
+
+  /** Finds the named Process or atomically creates it with the same resolved launch. */
+  findOrCreate(launch: Launch & Readonly<{ name: string }>): Promise<Process>
 }
 
 /** Process handle visible inside a structurally isolated Client. */
@@ -310,6 +313,11 @@ class ProgramProcessHandle {
 
   public async create(launch: Launch = {}) {
     const answer = await wire.request(["program-process-create", launch]) as [ProcessRecord]
+    return process(answer[0])
+  }
+
+  public async findOrCreate(launch: Launch & Readonly<{ name: string }>) {
+    const answer = await wire.request(["program-process-find-or-create", launch]) as [ProcessRecord]
     return process(answer[0])
   }
 

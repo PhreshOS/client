@@ -163,6 +163,12 @@ void current.process().then(process => {
 void current.program().then(program => {
   const samePermission: typeof current.permission = program.permission
   void samePermission.granted("pointer")
+  const shared: Promise<import("@phreshos/client").Process> = program.process.findOrCreate({
+    name: "shared-server",
+    server: true,
+    client: false
+  })
+  void shared
 })
 void localGeometry
 

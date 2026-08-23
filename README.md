@@ -147,6 +147,21 @@ authoritative, subscribable Window capability and its `window.local` physical
 representation on this desktop. Local reads and updates have no events and do
 not change Server state. `current.window` is only convenient access to the
 executing Client's canonical Window; it has no additional authority.
+
+A Program may converge its Clients on one named Process without a manual
+`find()`/`create()` race:
+
+```ts
+const shared = await program.process.findOrCreate({
+  name: "shared-server",
+  server: true,
+  client: false
+})
+```
+
+The authoritative Core returns the existing Process only when its normalized
+launch is equivalent; a conflicting launch rejects without changing it.
+
 When both dimensions must change, `setGeometry({ position, size })` commits
 them through one authoritative request and produces one `geometry` event.
 Calling `move()` and `resize()` sequentially or through `Promise.all()` remains
