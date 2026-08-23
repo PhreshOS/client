@@ -31,7 +31,8 @@ const host = {
     if (!ts.sys.fileExists(path)) return undefined
     return ts.ScriptSnapshot.fromString(readFileSync(path, "utf8"))
   },
-  getScriptVersion: () => "0"
+  getScriptVersion: () => "0",
+  useCaseSensitiveFileNames: () => ts.sys.useCaseSensitiveFileNames
 }
 const service = ts.createLanguageService(host)
 const completions = service.getCompletionsAtPosition(file, position, {})?.entries.map(entry => entry.name)
