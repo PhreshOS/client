@@ -13,16 +13,6 @@ import ClientPointer, { type HostPointer } from "./pointer.js"
 import ClientDesktop, { type HostDesktop } from "./desktop.js"
 import { prepareService } from "./service.js"
 
-type ServiceEndpoint = ServiceKey["endpoint"]
-
-type ServiceAddress<Endpoint extends ServiceEndpoint> = Omit<ServiceKey, "endpoint"> & Readonly<{
-  endpoint: Endpoint
-}>
-
-type ServiceHandle<Endpoint extends ServiceEndpoint, Events extends object> = Endpoint extends "server"
-  ? ServerServiceHandler<Events>
-  : ClientServiceHandler<Events>
-
 /** Desktop capabilities structurally available to a Client endpoint. */
 export interface Host {
   /** Read-only system Theme explicitly read from and observed through the desktop host. */
@@ -40,26 +30,15 @@ export interface Host {
   /** Performs an unrestricted server-side fetch on behalf of this Client. */
   fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>
 
-  /** Prepares exact public service handles without exposing the service registry. */
-  readonly service: HostService
-}
-
-/** Exact public service preparation available to a Client endpoint. */
-export interface HostService {
-  /** Returns a precisely typed stable handle for either service endpoint. */
-  prepare<Endpoint extends ServiceEndpoint, ServiceEvents extends object = {}>(
-    key: ServiceAddress<Endpoint>
-  ): ServiceHandle<Endpoint, ServiceEvents>
-
   /** Returns a stable handle for one exact Server service identity. */
-  prepare<ServiceEvents extends object = {}>(key: {
+  service<ServiceEvents extends object = {}>(key: {
     program: string
     endpoint: "server"
     name: string
   }): ServerServiceHandler<ServiceEvents>
 
   /** Returns a stable handle for one exact Client service identity. */
-  prepare<ServiceEvents extends object = {}>(key: {
+  service<ServiceEvents extends object = {}>(key: {
     program: string
     endpoint: "client"
     name: string
@@ -70,7 +49,10 @@ class ClientHost {
   public readonly theme = new ClientTheme() as unknown as Theme<ThemeProperties>
   public readonly desktop = new ClientDesktop() as unknown as HostDesktop
   public readonly pointer = new ClientPointer() as unknown as HostPointer
-  public readonly service = new ClientHostService() as unknown as HostService
+
+  public service<ServiceEvents extends object = {}>(key: ServiceKey & { endpoint: "server" }): ServerServiceHandler<ServiceEvents>
+  public service<ServiceEvents extends object = {}>(key: ServiceKey & { endpoint: "client" }): ClientServiceHandler<ServiceEvents>
+  public service(key: ServiceKey) { return prepareService(key) }
 
   public async serve(value: unknown): Promise<ServedFile> {
     const source = content(value)
@@ -160,17 +142,6 @@ class ClientHost {
     return response
   }
 
-}
-
-class ClientHostService {
-  public prepare<Endpoint extends ServiceEndpoint, ServiceEvents extends object = {}>(
-    key: ServiceAddress<Endpoint>
-  ): ServiceHandle<Endpoint, ServiceEvents>
-  public prepare<ServiceEvents extends object = {}>(key: ServiceAddress<"server">): ServerServiceHandler<ServiceEvents>
-  public prepare<ServiceEvents extends object = {}>(key: ServiceAddress<"client">): ClientServiceHandler<ServiceEvents>
-  public prepare(key: ServiceAddress<ServiceEndpoint>) {
-    return prepareService(key)
-  }
 }
 
 interface ProxyRequest {

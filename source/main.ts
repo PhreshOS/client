@@ -1,4 +1,4 @@
-export { host, type Host, type HostService } from "./host.js"
+export { host, type Host } from "./host.js"
 export { type HostPointer, type PointerEvents, type PointerPosition } from "./pointer.js"
 export { type DesktopEvents, type DesktopSize, type HostDesktop } from "./desktop.js"
 export { current, type Current, type CurrentServer } from "./current.js"

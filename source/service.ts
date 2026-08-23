@@ -6,7 +6,6 @@ import {
   type ClientServiceHandler,
   type ServerServiceChannel,
   type ServerServiceHandler,
-  type ServiceDefinition,
   type ServiceHandler,
   type ServiceKey
 } from "@phreshos/core"
@@ -80,10 +79,6 @@ class ServerHandler<EventsMap extends object = {}> extends ServerServiceBase {
     await wire.request(["service-wait-ready", this.key, timeout], timeout)
   }
 
-  public async docs() {
-    const answer = await wire.request(["service-docs", this.key]) as [string | null]
-    return answer[0]
-  }
 }
 
 class ClientHandler<EventsMap extends object = {}> extends ClientServiceBase {
@@ -123,8 +118,8 @@ export function prepareService(key: ServiceKey): ServiceHandler {
   }) as unknown as ServiceHandler
 }
 
-export async function enableCurrentService(definition: ServiceDefinition) {
-  await wire.request(["enable-service", definition])
+export async function enableCurrentService(name: string) {
+  await wire.request(["enable-service", name])
 }
 
 export async function disableCurrentService() {

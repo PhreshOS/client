@@ -63,11 +63,11 @@ only when no known decision can answer immediately and returns `null` if its
 deadline expires. The desktop remains the internal enforcement boundary, but
 permission ownership does not alter the public shape of `host`.
 
-The Client Host exposes service preparation as its only service-registry
-capability. Preparing a handle does not read or start the service:
+The Client Host exposes only direct, exact Service handles. Creating a handle
+does not read or start the Service and exposes no Service registry:
 
 ```ts
-const service = host.service.prepare({
+const service = host.service({
   program: "counter",
   endpoint: "server",
   name: "state"
