@@ -2,6 +2,7 @@ import type {
   ClientServiceHandler,
   ServedFile,
   ServerServiceHandler,
+  ServiceKey,
   Theme,
   ThemeProperties
 } from "@phreshos/core"
@@ -11,6 +12,16 @@ import wire from "./wire.js"
 import ClientPointer, { type HostPointer } from "./pointer.js"
 import ClientDesktop, { type HostDesktop } from "./desktop.js"
 import { service as serviceHandle } from "./service.js"
+
+type ServiceEndpoint = ServiceKey["endpoint"]
+
+type ServiceAddress<Endpoint extends ServiceEndpoint> = Omit<ServiceKey, "endpoint"> & Readonly<{
+  endpoint: Endpoint
+}>
+
+type ServiceHandle<Endpoint extends ServiceEndpoint, Events extends object> = Endpoint extends "server"
+  ? ServerServiceHandler<Events>
+  : ClientServiceHandler<Events>
 
 /** Desktop capabilities structurally available to a Client endpoint. */
 export interface Host {
@@ -28,6 +39,11 @@ export interface Host {
 
   /** Performs an unrestricted server-side fetch on behalf of this Client. */
   fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>
+
+  /** Returns a precisely typed stable handle for either service endpoint. */
+  service<Endpoint extends ServiceEndpoint, ServiceEvents extends object = {}>(
+    key: ServiceAddress<Endpoint>
+  ): ServiceHandle<Endpoint, ServiceEvents>
 
   /** Returns a stable handle for one exact Server service identity. */
   service<ServiceEvents extends object = {}>(key: {
@@ -137,9 +153,12 @@ class ClientHost {
     return response
   }
 
-  public service<ServiceEvents extends object = {}>(key: { program: string, endpoint: "server", name: string }): ServerServiceHandler<ServiceEvents>
-  public service<ServiceEvents extends object = {}>(key: { program: string, endpoint: "client", name: string }): ClientServiceHandler<ServiceEvents>
-  public service(key: { program: string, endpoint: "server" | "client", name: string }) {
+  public service<Endpoint extends ServiceEndpoint, ServiceEvents extends object = {}>(
+    key: ServiceAddress<Endpoint>
+  ): ServiceHandle<Endpoint, ServiceEvents>
+  public service<ServiceEvents extends object = {}>(key: ServiceAddress<"server">): ServerServiceHandler<ServiceEvents>
+  public service<ServiceEvents extends object = {}>(key: ServiceAddress<"client">): ClientServiceHandler<ServiceEvents>
+  public service(key: ServiceAddress<ServiceEndpoint>) {
     return serviceHandle(key)
   }
 

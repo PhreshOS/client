@@ -119,7 +119,7 @@ assert.equal(typeof document, "string")
 
   writeFileSync(
     join(consumer, "consumer.ts"),
-    `import { current, host, Client, Server, type DesktopSize, type HostDesktop, type ServerServiceHandler, type ThemeProperties } from "@phreshos/client"
+    `import { current, host, Client, Server, type ClientServiceHandler, type DesktopSize, type HostDesktop, type ServerServiceHandler, type ThemeProperties } from "@phreshos/client"
 
 type CounterEvents = { change: number }
 
@@ -127,6 +127,8 @@ const theme: Promise<Readonly<ThemeProperties>> = host.theme.snapshot()
 const hostDesktop: HostDesktop = host.desktop
 const desktopSize: Promise<DesktopSize> = host.desktop.size()
 const counter: ServerServiceHandler<CounterEvents> = host.service<CounterEvents>({ program: "counter", endpoint: "server", name: "state" })
+const clientCounter: ClientServiceHandler<CounterEvents> = host.service<CounterEvents>({ program: "counter", endpoint: "client", name: "state" })
+const inferredClientCounter: ClientServiceHandler = host.service({ program: "counter", endpoint: "client", name: "state" })
 const counterStop = counter.channel.subscribe("change", value => void value)
 const counterAnswer: Promise<number> = counter.channel.ask<number>("value")
 const counterDocs: Promise<string | null> = counter.docs()
@@ -162,6 +164,8 @@ void theme
 void hostDesktop
 void desktopSize
 void counter
+void clientCounter
+void inferredClientCounter
 void counterStop
 void counterAnswer
 void counterDocs

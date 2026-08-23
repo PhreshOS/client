@@ -41,8 +41,9 @@
     "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "check": "tsc --noEmit",
     "build": "node --run clean && tsc --noEmit false --outDir dist --rootDir source",
+    "verify:completions": "node scripts/verify-completions.mjs",
     "verify:package": "node scripts/verify-package.mjs",
-    "verify": "node --run check && node --run build && node --run verify:package",
+    "verify": "node --run check && node --run verify:completions && node --run build && node --run verify:package",
     "prepack": "node --run build"
   },
   "peerDependencies": {
