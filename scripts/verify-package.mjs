@@ -137,8 +137,8 @@ const counterStop = counter.channel.subscribe("change", value => void value)
 const counterAnswer: Promise<number> = counter.channel.ask<number>("value")
 const expose: Promise<void> = current.enableService("state")
 const program = await current.program()
-const hasService: boolean | undefined = program.client?.hasService()
-const serviceDocs: Promise<string | null> | undefined = program.client?.docs()
+const hasAgent: boolean = program.hasAgent
+const agent: Promise<string | null> = program.agent()
 const desktop = host.desktop.subscribe("resize", size => void size.width)
 const pointer = host.pointer.subscribe("move", position => void position.x)
 const clientSurface: Promise<void> = current.window.local.surface.set({ opacity: 0.5 }, { easing: "ease-out", wait: true })
@@ -181,8 +181,8 @@ void inferredClientCounter
 void counterStop
 void counterAnswer
 void expose
-void hasService
-void serviceDocs
+void hasAgent
+void agent
 void desktop
 void pointer
 void clientSurface
