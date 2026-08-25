@@ -35,8 +35,6 @@ class Wire {
   private identityPromise: Promise<{ process: string, reference: string }> | null = null
 
   public constructor() {
-    this.send("boundary", "document", crypto.randomUUID())
-
     window.addEventListener("message", event => {
       if (event.source !== this.parent || !Array.isArray(event.data)) return
 
