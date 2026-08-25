@@ -35,7 +35,7 @@ export function area(which: "data" | "cache"): Storage {
     }
   }
 
-  async function stream(...path: string[]) {
+  async function stream(...path: [string, ...string[]]) {
     const body = await transfer("stream", path)
     if (!body) throw new Error("The storage response has no body")
     return body
@@ -45,9 +45,8 @@ export function area(which: "data" | "cache"): Storage {
     stream,
     async bytes(...path) { return new Uint8Array(await new Response(await stream(...path)).arrayBuffer()) },
     async text(...path) { return new Response(await stream(...path)).text() },
-    async json<Value>(...path: string[]) { return JSON.parse(await new Response(await stream(...path)).text()) as Value },
-    async write(...args: [...path: string[], value: unknown]) {
-      if (args.length < 2) throw new Error("Writing takes a file name and what to write")
+    async json<Value>(...path: [string, ...string[]]) { return JSON.parse(await new Response(await stream(...path)).text()) as Value },
+    async write(...args: [...path: [string, ...string[]], value: unknown]) {
       await transfer("write", args.slice(0, -1) as string[], content(args.at(-1)).body)
     },
     stat: (...path) => ask("stat", ...path),
