@@ -15,10 +15,20 @@ interface Pending {
   timer: ReturnType<typeof setTimeout>
 }
 
+interface PendingStream {
+  queue: unknown[]
+  opened: boolean
+  ended: boolean
+  failure: Error | null
+  wake: (() => void) | null
+  timer: ReturnType<typeof setTimeout>
+}
+
 /** The client endpoint's sole postMessage adapter. */
 class Wire {
   private readonly parent = window.parent === window ? null : window.parent
   private readonly pending = new Map<string, Pending>()
+  private readonly streams = new Map<string, PendingStream>()
   private readonly subscribers = new Map<string, Set<Handler>>()
   private readonly every = new Map<string, Set<Handler>>()
   private readonly impossible = new Map<string, Failure>()
@@ -54,6 +64,11 @@ class Wire {
         return
       }
 
+      if (values[0] === "stream" && typeof values[1] === "string" && typeof values[2] === "string") {
+        this.receiveStream(values[1], values[2], values[3])
+        return
+      }
+
       this.deliver(route, values)
     })
   }
@@ -64,6 +79,50 @@ class Wire {
 
   public request(values: unknown[], timeout = defaultTimeout, transfer: Transferable[] = []): Promise<unknown> {
     return this.question("end-host", values, timeout, transfer)
+  }
+
+  /** Opens one long-running desktop operation and yields its ordered values. */
+  public stream(values: unknown[], timeout = defaultTimeout): AsyncIterableIterator<unknown> {
+    const wire = this
+
+    return (async function* () {
+      const question = `client:${crypto.randomUUID()}:${crypto.randomUUID()}`
+      const state: PendingStream = {
+        queue: [],
+        opened: false,
+        ended: false,
+        failure: null,
+        wake: null,
+        timer: setTimeout(() => {
+          state.failure = new Error(`Answer timeout ${timeout}ms`)
+          state.wake?.()
+          state.wake = null
+        }, timeout)
+      }
+
+      wire.send("boundary", "expect", question)
+      wire.streams.set(question, state)
+      wire.send("end-host", "stream", question, ...values)
+
+      try {
+        while (true) {
+          if (state.queue.length) {
+            yield state.queue.shift()
+            continue
+          }
+
+          if (state.failure) throw state.failure
+          if (state.ended) return
+
+          await new Promise<void>(resolve => { state.wake = resolve })
+        }
+      }
+      finally {
+        clearTimeout(state.timer)
+        wire.streams.delete(question)
+        wire.send("boundary", "forget", question)
+      }
+    })()
   }
 
   /** Requests a value while treating the caller's deadline as an absent answer. */
@@ -304,6 +363,33 @@ class Wire {
     else if (outcome?.success === false && typeof outcome.error === "string") pending.reject(new Error(outcome.error))
     else pending.reject(new Error("The boundary returned an invalid outcome"))
   }
+
+  private receiveStream(question: string, operation: string, value: unknown) {
+    const stream = this.streams.get(question)
+    if (!stream || stream.ended || stream.failure) return
+
+    if (operation === "open") {
+      if (stream.opened) return
+      stream.opened = true
+      clearTimeout(stream.timer)
+    }
+    else if (!stream.opened) stream.failure = new Error("The boundary produced a stream value before opening the stream")
+    else if (operation === "data") {
+      if (stream.queue.length >= maximumStreamQueue) stream.failure = new Error(`Host stream queue exceeded its capacity of ${maximumStreamQueue}`)
+      else stream.queue.push(value)
+    }
+    else if (operation === "answer") {
+      const outcome = value as Outcome
+
+      if (outcome?.success === true) stream.ended = true
+      else if (outcome?.success === false && typeof outcome.error === "string") stream.failure = new Error(outcome.error)
+      else stream.failure = new Error("The boundary returned an invalid stream outcome")
+    }
+    else stream.failure = new Error(`The boundary returned an invalid stream operation "${operation}"`)
+
+    stream.wake?.()
+    stream.wake = null
+  }
 }
 
 function invoke(handler: Handler, values: unknown[]) {
@@ -353,6 +439,8 @@ function nativeAttachments(value: unknown, transfer: readonly Transferable[]) {
   visit(value)
   return attachments
 }
+
+const maximumStreamQueue = 256
 
 const wire = new Wire()
 captureClientOutput(wire)

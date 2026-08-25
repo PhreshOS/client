@@ -22,6 +22,7 @@ import {
   type Outcome,
   type Permission,
   type Position,
+  type ProgramCommandChunk,
   type ProgramIconSize,
   type ProgramProcess as CoreProgramProcess,
   type ServerTraffic as CoreServerTraffic,
@@ -266,8 +267,22 @@ class ProgramHandle extends ProgramBase {
     return answer[0]
   }
 
-  public async uninstall(everything = false) { await wire.request(["uninstall", undefined, everything]) }
+  public async *uninstall(everything = false) {
+    for await (const value of wire.stream(["uninstall", undefined, everything])) {
+      yield programCommandChunk(value)
+    }
+  }
   public async forget() { await wire.request(["forget"]) }
+}
+
+function programCommandChunk(value: unknown): ProgramCommandChunk {
+  const chunk = value as Partial<ProgramCommandChunk> | null
+
+  if (!chunk || (chunk.stream !== "stdout" && chunk.stream !== "stderr") || typeof chunk.text !== "string") {
+    throw new Error("The desktop returned an invalid Program command chunk")
+  }
+
+  return Object.freeze({ stream: chunk.stream, text: chunk.text })
 }
 
 function declaration(record: EndpointDeclarationRecord): EndpointDeclaration {

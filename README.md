@@ -148,6 +148,16 @@ representation on this desktop. Local reads and updates have no events and do
 not change Server state. `current.window` is only convenient access to the
 executing Client's canonical Window; it has no additional authority.
 
+A Client may uninstall only its own Program. The operation is an async
+generator so a declared Server cleanup command remains observable without a
+fixed answer timeout:
+
+```ts
+for await (const chunk of program.uninstall()) {
+  console.log(chunk.stream, chunk.text)
+}
+```
+
 A Program may converge its Clients on one named Process without a manual
 `find()`/`create()` race:
 
