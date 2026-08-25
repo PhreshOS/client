@@ -141,7 +141,7 @@ identity is removed by the server host before the message reaches the desktop.
 The same rule applies to Client-visible traffic destinations.
 
 Client-visible Program handles can operate only within their own Program.
-They deliberately omit `install()` and `fork()`, and their storage areas never
+They deliberately omit `install()` and `fork()`, and their `Storage` values never
 expose host filesystem paths. Every Client-side Window handle exposes the same
 authoritative, subscribable Window capability and its `window.local` physical
 representation on this desktop. Local reads and updates have no events and do

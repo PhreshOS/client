@@ -63,7 +63,7 @@ export type {
   PermissionDecision,
   Permission,
   Position,
-  ProgramArea,
+  Storage,
   ProgramEvents,
   ProgramProcessEvents,
   ProgramProcessExit,

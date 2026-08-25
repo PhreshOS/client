@@ -1,9 +1,9 @@
-import type { ProgramArea, ProgramSql, ProgramStore } from "@phreshos/core"
+import type { ProgramSql, ProgramStore, Storage } from "@phreshos/core"
 import { content, type ContentBody } from "./content.js"
 import wire from "./wire.js"
 
 /** Client-side Program storage, structurally scoped by the iframe boundary. */
-export function area(which: "data" | "cache"): ProgramArea {
+export function area(which: "data" | "cache"): Storage {
   async function ask<Result>(operation: string, ...values: unknown[]) {
     const answer = await wire.request([which, undefined, operation, ...values]) as [Result]
     return answer[0]
@@ -53,8 +53,8 @@ export function area(which: "data" | "cache"): ProgramArea {
     stat: (...path) => ask("stat", ...path),
     list: (...path) => ask("list", ...path),
     delete: (...path) => ask("delete", ...path),
-    clear: () => ask("clear")
-  } as ProgramArea
+    clear: (...path) => ask("clear", ...path)
+  } as Storage
 }
 
 export function store(): ProgramStore {
