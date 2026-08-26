@@ -180,25 +180,21 @@ two independent operations and can expose an intermediate state remotely.
 An `under` or `over` representation may request one local host-rendered Surface:
 
 ```ts
-await current.window.local.surface.set({
-  opacity: 0.65,
-  radius: "large"
-}, { duration: 240, easing: "ease-out", wait: true })
+await current.window.local.surface.set({ duration: 240, easing: "ease-out", wait: true })
 
-await current.window.local.surface.remove()
+await current.window.local.surface.remove({ duration: 180, easing: "ease-in" })
 ```
 
 The desktop holds local state only for the lifetime of that iframe
 representation. Reloading or destroying it resets the representation from
 authoritative truth, while other desktops remain unaffected. Program code may
-synchronize desired settings through its Server and explicitly apply them
-again. `set()` with no settings creates a sharp, fully opaque Surface.
-Opacity is a finite number from `0` through `1`; zero retains the Surface node.
-Radius accepts a nonnegative pixel number, a Theme-derived `ScaleLevel`, or
-`"full"`. Only `remove()` restores exact `null` and immediately removes the
-node. The optional transaction uses milliseconds and a stable named or cubic
-Bézier easing; the desktop performs the motion, honors reduced motion, and does
-does not restore anything when a new iframe representation begins. The sharp
+synchronize desired presence through its Server and explicitly apply it
+again. `set()` and `remove()` accept only a required `VisibilityTransition`;
+Programs cannot configure the host Surface's material, opacity, or radius.
+The transition uses milliseconds and a stable named or cubic Bézier easing;
+the desktop performs the motion, honors reduced motion, and removes the Surface
+only after its exit transition completes. `wait: true` makes the request settle
+with that transition. A new iframe representation restores nothing. The
 container follows the iframe geometry while the independently rounded Surface
 neither clips nor masks Client content. `window` and `wallpaper` layers reject
 the capability.

@@ -91,6 +91,6 @@ export type {
   Easing,
   LocalWindow,
   LocalWindowSurface,
-  SurfaceSettings,
+  VisibilityTransition,
   Transaction
 } from "@phreshos/core"

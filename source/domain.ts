@@ -27,7 +27,7 @@ import {
   type ProgramProcess as CoreProgramProcess,
   type ServerTraffic as CoreServerTraffic,
   type Size,
-  type SurfaceSettings,
+  type VisibilityTransition,
   type TrafficMessage as CoreTrafficMessage,
   type TrafficCapture as CoreTrafficCapture,
   type TrafficEvents as CoreTrafficEvents,
@@ -545,11 +545,13 @@ class LocalWindowHandle implements LocalWindow {
 class LocalWindowSurfaceHandle {
   public constructor(private readonly target: WindowTarget) {}
 
-  public async set(settings: SurfaceSettings = {}, transaction?: Transaction) {
-    await wire.request(["windowLocalSurfaceSet", await this.target(), settings, transaction])
+  public async set(transition: VisibilityTransition) {
+    await wire.request(["windowLocalSurfaceSet", await this.target(), transition])
   }
 
-  public async remove() { await wire.request(["windowLocalSurfaceRemove", await this.target()]) }
+  public async remove(transition: VisibilityTransition) {
+    await wire.request(["windowLocalSurfaceRemove", await this.target(), transition])
+  }
 }
 
 type WindowTarget = () => Promise<HandleAddress>

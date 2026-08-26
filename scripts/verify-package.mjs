@@ -134,7 +134,7 @@ const hasAgent: boolean = program.hasAgent
 const agent: Promise<string | null> = program.agent()
 const desktop = host.desktop.subscribe("resize", size => void size.width)
 const pointer = host.pointer.subscribe("move", position => void position.x)
-const clientSurface: Promise<void> = current.window.local.surface.set({ opacity: 0.5 }, { easing: "ease-out", wait: true })
+const clientSurface: Promise<void> = current.window.local.surface.set({ easing: "ease-out", wait: true })
 const localGeometry: Promise<void> = current.window.local.setGeometry({
   position: { x: 20, y: 20 },
   size: { width: 420, height: 280 }
