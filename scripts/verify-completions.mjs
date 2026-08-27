@@ -5,16 +5,16 @@ import { fileURLToPath } from "node:url"
 import ts from "typescript"
 
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..")
-const file = join(repository, "host-service-completion.ts")
+const file = join(repository, "system-service-completion.ts")
 const marker = "endpoint: \"\""
-const source = `import type { Host } from "./source/host.js"
+const source = `import type { System } from "./source/system.js"
 
-declare const host: Host
+declare const system: System
 
-host.service({ program: "counter", endpoint: "", name: "state" })
+system.service({ program: "counter", endpoint: "", name: "state" })
 `
 const position = source.indexOf(marker) + "endpoint: \"".length
-const host = {
+const languageHost = {
   ...ts.sys,
   getCompilationSettings: () => ({
     lib: ["lib.dom.d.ts", "lib.esnext.d.ts"],
@@ -34,7 +34,7 @@ const host = {
   getScriptVersion: () => "0",
   useCaseSensitiveFileNames: () => ts.sys.useCaseSensitiveFileNames
 }
-const service = ts.createLanguageService(host)
+const service = ts.createLanguageService(languageHost)
 const completions = service.getCompletionsAtPosition(file, position, {})?.entries.map(entry => entry.name)
 
 assert.deepEqual(completions, ["server", "client"])

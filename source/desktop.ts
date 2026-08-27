@@ -15,7 +15,7 @@ export type DesktopEvents = {
 }
 
 /** Explicit desktop size reads and future resizes. */
-export interface HostDesktop extends Subscribable<DesktopEvents, never> {
+export interface SystemDesktop extends Subscribable<DesktopEvents, never> {
   /** Reads the complete current desktop area in CSS pixels. */
   size(): Promise<DesktopSize>
 }
@@ -38,7 +38,7 @@ export default class ClientDesktop extends Events {
   public async size() {
     const answer = await wire.request(["desktop"]) as [unknown]
     const size = createSize(answer[0])
-    if (!size) throw new Error("The host returned an invalid desktop size")
+    if (!size) throw new Error("The system returned an invalid desktop size")
     return size
   }
 }

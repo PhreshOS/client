@@ -649,7 +649,7 @@ function lifecycleEndpoint(record: unknown, kind: unknown) {
   const owner = process(record as ProcessRecord)
   if (kind === "server") return owner.server
   if (kind === "client") return owner.client
-  throw new Error("The host returned an invalid Endpoint lifecycle event")
+  throw new Error("The system returned an invalid Endpoint lifecycle event")
 }
 
 export function exit(code: unknown, signal: unknown): Exit {

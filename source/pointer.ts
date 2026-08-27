@@ -18,7 +18,7 @@ export type PointerEvents = {
 }
 
 /** Permission-guarded pointer positions and future movement. */
-export interface HostPointer extends Subscribable<PointerEvents, never> {
+export interface SystemPointer extends Subscribable<PointerEvents, never> {
   /**
    * Reads the current desktop pointer position, or `null` before one is known.
    * Rejects unless the `pointer` permission is currently granted.

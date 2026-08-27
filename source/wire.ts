@@ -373,7 +373,7 @@ class Wire {
     }
     else if (!stream.opened) stream.failure = new Error("The boundary produced a stream value before opening the stream")
     else if (operation === "data") {
-      if (stream.queue.length >= maximumStreamQueue) stream.failure = new Error(`Host stream queue exceeded its capacity of ${maximumStreamQueue}`)
+      if (stream.queue.length >= maximumStreamQueue) stream.failure = new Error(`System stream queue exceeded its capacity of ${maximumStreamQueue}`)
       else stream.queue.push(value)
     }
     else if (operation === "answer") {

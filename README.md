@@ -15,26 +15,26 @@ provide its runtime environment.
 
 It uses the domain objects and shared contracts from `@phreshos/core` through
 a peer dependency. It does not redefine those objects, own server-side
-capabilities, or contain host and transport implementations.
+capabilities, or contain System and transport implementations.
 
-Its `Host` contract exposes only desktop-session capabilities: the public
+Its `System` contract exposes only desktop-session capabilities: the public
 system Theme, desktop and pointer state, publicly served values, and
-unrestricted server-side Fetch. `host.theme.snapshot()` explicitly and
-asynchronously reads the current snapshot retained by the desktop host.
-`host.theme.subscribe("change", listener)` is an ordinary live subscription:
+unrestricted server-side Fetch. `system.theme.snapshot()` explicitly and
+asynchronously reads the current snapshot retained by the desktop system.
+`system.theme.subscribe("change", listener)` is an ordinary live subscription:
 it receives only complete replacements published after registration, with no
 initial value or replay. The Client cannot write the authoritative value. The
-Host does not expose system-wide Program or Process discovery.
+System does not expose system-wide Program or Process discovery.
 
 Desktop and pointer access are independent objects rather than events merged
-into Host:
+into System:
 
 ```ts
-const desktop = await host.desktop.size()
-const stopDesktop = host.desktop.subscribe("resize", next => undefined)
+const desktop = await system.desktop.size()
+const stopDesktop = system.desktop.subscribe("resize", next => undefined)
 
-const position = await host.pointer.position()
-const stopPointer = host.pointer.subscribe("move", next => undefined)
+const position = await system.pointer.position()
+const stopPointer = system.pointer.subscribe("move", next => undefined)
 ```
 
 The desktop size is the complete desktop area containing this Client,
@@ -44,7 +44,7 @@ movement both require the `pointer` permission. Reads are asynchronous
 requests; subscriptions receive only future publications and never replay a
 retained value.
 
-Permission decisions belong to the current Program, not to the desktop Host.
+Permission decisions belong to the current Program, not to the desktop System.
 They are available from a Program handle and flattened through `current` as the
 same canonical capability:
 
@@ -61,13 +61,13 @@ current.permission === program.permission
 `granted()` reads the effective decision without prompting. `request()` asks
 only when no known decision can answer immediately and returns `null` if its
 deadline expires. The desktop remains the internal enforcement boundary, but
-permission ownership does not alter the public shape of `host`.
+permission ownership does not alter the public shape of `system`.
 
-The Client Host exposes only direct, exact Service handles. Creating a handle
+The Client System exposes only direct, exact Service handles. Creating a handle
 does not read or start the Service and exposes no Service registry:
 
 ```ts
-const service = host.service({
+const service = system.service({
   program: "counter",
   endpoint: "server",
   name: "state"
@@ -115,7 +115,7 @@ absence or incarnation loss rejects without turning the boundary into a waiter.
 The package provides two contextual runtime entry points:
 
 ```ts
-import { host, current } from "@phreshos/client"
+import { system, current } from "@phreshos/client"
 ```
 
 It also re-exports the shared Core runtime classes—`Program`, `Process`,
@@ -137,12 +137,12 @@ reserved for directed publications, questions, and answers.
 
 Messages sent by an Endpoint in the same Program contain that real Endpoint in
 `from`. If the sender belongs to another Program, `from` is `null`; the foreign
-identity is removed by the server host before the message reaches the desktop.
+identity is removed by the authoritative System before the message reaches the desktop.
 The same rule applies to Client-visible traffic destinations.
 
 Client-visible Program handles can operate only within their own Program.
 They deliberately omit `install()` and `fork()`, and their `Storage` values never
-expose host filesystem paths. Every Client-side Window handle exposes the same
+expose native filesystem paths. Every Client-side Window handle exposes the same
 authoritative, subscribable Window capability and its `window.local` physical
 representation on this desktop. Local reads and updates have no events and do
 not change Server state. `current.window` is only convenient access to the
@@ -177,7 +177,7 @@ them through one authoritative request and produces one `geometry` event.
 Calling `move()` and `resize()` sequentially or through `Promise.all()` remains
 two independent operations and can expose an intermediate state remotely.
 
-An `under` or `over` representation may request one local host-rendered Surface:
+An `under` or `over` representation may request one local system-rendered Surface:
 
 ```ts
 await current.window.local.surface.set({ duration: 240, easing: "ease-out", wait: true })
@@ -190,7 +190,7 @@ representation. Reloading or destroying it resets the representation from
 authoritative truth, while other desktops remain unaffected. Program code may
 synchronize desired presence through its Server and explicitly apply it
 again. `set()` and `remove()` accept only a required `VisibilityTransition`;
-Programs cannot configure the host Surface's material, opacity, or radius.
+Programs cannot configure the System Surface's material, opacity, or radius.
 The transition uses milliseconds and a stable named or cubic Bézier easing;
 the desktop performs the motion, honors reduced motion, and removes the Surface
 only after its exit transition completes. `wait: true` makes the request settle

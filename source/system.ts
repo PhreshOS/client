@@ -9,8 +9,8 @@ import type {
 import { content } from "./content.js"
 import ClientTheme from "./theme.js"
 import wire from "./wire.js"
-import ClientPointer, { type HostPointer } from "./pointer.js"
-import ClientDesktop, { type HostDesktop } from "./desktop.js"
+import ClientPointer, { type SystemPointer } from "./pointer.js"
+import ClientDesktop, { type SystemDesktop } from "./desktop.js"
 import { prepareService } from "./service.js"
 
 type ServiceEndpoint = ServiceKey["endpoint"]
@@ -24,15 +24,15 @@ type ServiceHandle<Endpoint extends ServiceEndpoint, Events extends object> = En
   : ClientServiceHandler<Events>
 
 /** Desktop capabilities structurally available to a Client endpoint. */
-export interface Host {
-  /** Read-only system Theme explicitly read from and observed through the desktop host. */
+export interface System {
+  /** Read-only system Theme explicitly read from and observed through the desktop representation. */
   readonly theme: Theme<ThemeProperties>
 
   /** Layer-independent desktop size reads and live updates. */
-  readonly desktop: HostDesktop
+  readonly desktop: SystemDesktop
 
   /** Permission-guarded desktop pointer reads and live movement. */
-  readonly pointer: HostPointer
+  readonly pointer: SystemPointer
 
   /** Stores one value as a publicly reachable file. */
   serve(value: unknown): Promise<ServedFile>
@@ -52,10 +52,10 @@ export interface Host {
   service<ServiceEvents extends object>(key: ServiceAddress<"client">): ClientServiceHandler<ServiceEvents>
 }
 
-class ClientHost {
+class ClientSystem {
   public readonly theme = new ClientTheme() as unknown as Theme<ThemeProperties>
-  public readonly desktop = new ClientDesktop() as unknown as HostDesktop
-  public readonly pointer = new ClientPointer() as unknown as HostPointer
+  public readonly desktop = new ClientDesktop() as unknown as SystemDesktop
+  public readonly pointer = new ClientPointer() as unknown as SystemPointer
 
   public service<Endpoint extends ServiceEndpoint>(key: ServiceAddress<Endpoint>): ServiceHandle<Endpoint, {}>
   public service<ServiceEvents extends object>(key: ServiceAddress<"server">): ServerServiceHandler<ServiceEvents>
@@ -220,4 +220,4 @@ function closeControl(signal: AbortSignal, port: MessagePort, abort: () => void)
 }
 
 /** Desktop capabilities available to this Client. */
-export const host: Host = new ClientHost()
+export const system: System = new ClientSystem()

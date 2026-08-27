@@ -71,7 +71,7 @@ const messages = []
 const parent = { postMessage: message => messages.push(message) }
 globalThis.window = { parent, addEventListener() {} }
 
-const { Client, Endpoint, Process, Program, Server, ServerServiceHandler, ServiceHandler, current, host } = await import("@phreshos/client")
+const { Client, Endpoint, Process, Program, Server, ServerServiceHandler, ServiceHandler, current, system } = await import("@phreshos/client")
 
 assert.equal(Program, core.Program)
 assert.equal(Process, core.Process)
@@ -86,19 +86,19 @@ assert.equal(typeof current.enableService, "function")
 assert.equal(typeof current.disableService, "function")
 assert.equal("enableService" in current.server, false)
 assert.equal("disableService" in current.server, false)
-assert.equal(typeof host.theme.snapshot, "function")
-assert.equal(typeof host.desktop.size, "function")
-assert.equal("surface" in host, false)
-assert.equal(typeof host.pointer.position, "function")
+assert.equal(typeof system.theme.snapshot, "function")
+assert.equal(typeof system.desktop.size, "function")
+assert.equal("surface" in system, false)
+assert.equal(typeof system.pointer.position, "function")
 assert.equal(typeof current.window.local.surface.set, "function")
 assert.equal(typeof current.window.local.surface.remove, "function")
 assert.equal("snapshot" in current.window.local.surface, false)
 assert.equal("subscribe" in current.window.local, false)
 assert.equal(typeof current.permission.granted, "function")
 assert.equal(typeof current.permission.request, "function")
-assert.equal("permission" in host, false)
-const service = host.service({ program: "counter", endpoint: "server", name: "state" })
-assert.equal(service, host.service({ program: "counter", endpoint: "server", name: "state" }))
+assert.equal("permission" in system, false)
+const service = system.service({ program: "counter", endpoint: "server", name: "state" })
+assert.equal(service, system.service({ program: "counter", endpoint: "server", name: "state" }))
 assert(service instanceof ServiceHandler)
 assert(service instanceof ServerServiceHandler)
 assert.equal("program" in service, false)
@@ -116,24 +116,24 @@ assert.equal(messages.length, 0)
 
   writeFileSync(
     join(consumer, "consumer.ts"),
-    `import { current, host, Client, Server, type ClientServiceHandler, type DesktopSize, type HostDesktop, type ServerServiceHandler, type ThemeProperties } from "@phreshos/client"
+    `import { current, system, Client, Server, type ClientServiceHandler, type DesktopSize, type SystemDesktop, type ServerServiceHandler, type ThemeProperties } from "@phreshos/client"
 
 type CounterEvents = { change: number }
 
-const theme: Promise<Readonly<ThemeProperties>> = host.theme.snapshot()
-const hostDesktop: HostDesktop = host.desktop
-const desktopSize: Promise<DesktopSize> = host.desktop.size()
-const counter: ServerServiceHandler<CounterEvents> = host.service<CounterEvents>({ program: "counter", endpoint: "server", name: "state" })
-const clientCounter: ClientServiceHandler<CounterEvents> = host.service<CounterEvents>({ program: "counter", endpoint: "client", name: "state" })
-const inferredClientCounter: ClientServiceHandler = host.service({ program: "counter", endpoint: "client", name: "state" })
+const theme: Promise<Readonly<ThemeProperties>> = system.theme.snapshot()
+const systemDesktop: SystemDesktop = system.desktop
+const desktopSize: Promise<DesktopSize> = system.desktop.size()
+const counter: ServerServiceHandler<CounterEvents> = system.service<CounterEvents>({ program: "counter", endpoint: "server", name: "state" })
+const clientCounter: ClientServiceHandler<CounterEvents> = system.service<CounterEvents>({ program: "counter", endpoint: "client", name: "state" })
+const inferredClientCounter: ClientServiceHandler = system.service({ program: "counter", endpoint: "client", name: "state" })
 const counterStop = counter.channel.subscribe("change", value => void value)
 const counterAnswer: Promise<number> = counter.channel.ask<number>("value")
 const expose: Promise<void> = current.enableService("state")
 const program = await current.program()
 const hasAgent: boolean = program.hasAgent
 const agent: Promise<string | null> = program.agent()
-const desktop = host.desktop.subscribe("resize", size => void size.width)
-const pointer = host.pointer.subscribe("move", position => void position.x)
+const desktop = system.desktop.subscribe("resize", size => void size.width)
+const pointer = system.pointer.subscribe("move", position => void position.x)
 const clientSurface: Promise<void> = current.window.local.surface.set({ easing: "ease-out", wait: true })
 const localGeometry: Promise<void> = current.window.local.setGeometry({
   position: { x: 20, y: 20 },
@@ -166,7 +166,7 @@ void current.program().then(program => {
 void localGeometry
 
 void theme
-void hostDesktop
+void systemDesktop
 void desktopSize
 void counter
 void clientCounter
