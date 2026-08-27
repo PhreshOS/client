@@ -1,11 +1,12 @@
 import type {
+  AppearanceSource,
   ClientServiceHandler,
   ServedFile,
   ServerServiceHandler,
   ServiceKey,
-  Theme,
-  ThemeProperties
+  SystemTheme
 } from "@phreshos/core"
+import ClientAppearance from "./appearance.js"
 import { content } from "./content.js"
 import ClientTheme from "./theme.js"
 import wire from "./wire.js"
@@ -25,8 +26,11 @@ type ServiceHandle<Endpoint extends ServiceEndpoint, Events extends object> = En
 
 /** Desktop capabilities structurally available to a Client endpoint. */
 export interface System {
-  /** Read-only system Theme explicitly read from and observed through the desktop representation. */
-  readonly theme: Theme<ThemeProperties>
+  /** Complete unresolved Appearance read from the System authority. */
+  readonly appearance: AppearanceSource
+
+  /** Mutable effective Theme local to this Desktop. */
+  readonly theme: SystemTheme
 
   /** Layer-independent desktop size reads and live updates. */
   readonly desktop: SystemDesktop
@@ -53,7 +57,8 @@ export interface System {
 }
 
 class ClientSystem {
-  public readonly theme = new ClientTheme() as unknown as Theme<ThemeProperties>
+  public readonly appearance = new ClientAppearance() as unknown as AppearanceSource
+  public readonly theme = new ClientTheme() as unknown as SystemTheme
   public readonly desktop = new ClientDesktop() as unknown as SystemDesktop
   public readonly pointer = new ClientPointer() as unknown as SystemPointer
 

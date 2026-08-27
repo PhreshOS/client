@@ -87,6 +87,8 @@ assert.equal(typeof current.disableService, "function")
 assert.equal("enableService" in current.server, false)
 assert.equal("disableService" in current.server, false)
 assert.equal(typeof system.theme.snapshot, "function")
+assert.equal(typeof system.theme.update, "function")
+assert.equal(typeof system.appearance.snapshot, "function")
 assert.equal(typeof system.desktop.size, "function")
 assert.equal("surface" in system, false)
 assert.equal(typeof system.pointer.position, "function")
@@ -116,11 +118,13 @@ assert.equal(messages.length, 0)
 
   writeFileSync(
     join(consumer, "consumer.ts"),
-    `import { current, system, Client, Server, type ClientServiceHandler, type DesktopSize, type SystemDesktop, type ServerServiceHandler, type ThemeProperties } from "@phreshos/client"
+    `import { current, system, Client, Server, type Appearance, type ClientServiceHandler, type DesktopSize, type SystemDesktop, type ServerServiceHandler, type Theme } from "@phreshos/client"
 
 type CounterEvents = { change: number }
 
-const theme: Promise<Readonly<ThemeProperties>> = system.theme.snapshot()
+const appearance: Promise<Appearance> = system.appearance.snapshot()
+const theme: Promise<Theme> = system.theme.snapshot()
+const updateTheme: Promise<void> = system.theme.update("default")
 const systemDesktop: SystemDesktop = system.desktop
 const desktopSize: Promise<DesktopSize> = system.desktop.size()
 const counter: ServerServiceHandler<CounterEvents> = system.service<CounterEvents>({ program: "counter", endpoint: "server", name: "state" })

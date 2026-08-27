@@ -17,14 +17,15 @@ It uses the domain objects and shared contracts from `@phreshos/core` through
 a peer dependency. It does not redefine those objects, own server-side
 capabilities, or contain System and transport implementations.
 
-Its `System` contract exposes only desktop-session capabilities: the public
-system Theme, desktop and pointer state, publicly served values, and
-unrestricted server-side Fetch. `system.theme.snapshot()` explicitly and
-asynchronously reads the current snapshot retained by the desktop system.
-`system.theme.subscribe("change", listener)` is an ordinary live subscription:
-it receives only complete replacements published after registration, with no
-initial value or replay. The Client cannot write the authoritative value. The
-System does not expose system-wide Program or Process discovery.
+Its `System` contract exposes only desktop-session capabilities: read-only
+System Appearance, the mutable Theme local to this Desktop, desktop and pointer
+state, publicly served values, and unrestricted server-side Fetch.
+`system.appearance.snapshot()` reads complete unresolved authoritative state.
+`system.theme.snapshot()` reads only the effective `"light" | "dark"` mode;
+`update("default")` resumes following the native environment. Both expose
+ordinary live-only `change` subscriptions with no initial replay. A Client
+cannot write authoritative Appearance or discover system-wide Programs and
+Processes.
 
 Desktop and pointer access are independent objects rather than events merged
 into System:
@@ -196,7 +197,7 @@ the desktop performs the motion, honors reduced motion, and removes the Surface
 only after its exit transition completes. `wait: true` makes the request settle
 with that transition. A new iframe representation restores nothing. The
 container follows the iframe geometry while the independently rounded Surface
-neither clips nor masks Client content. `window` and `wallpaper` layers reject
+neither clips nor masks Client content. The ordinary `window` layer rejects
 the capability.
 
 `program.icon()` requests the current Program's guaranteed PNG `Blob` on
