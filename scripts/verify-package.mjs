@@ -89,6 +89,10 @@ assert.equal("disableService" in current.server, false)
 assert.equal(typeof system.theme.snapshot, "function")
 assert.equal(typeof system.theme.update, "function")
 assert.equal(typeof system.appearance.snapshot, "function")
+assert.equal(typeof system.uploads.write, "function")
+assert.equal(typeof system.uploads.stream, "function")
+assert.equal(typeof system.uploads.stat, "function")
+assert.equal("serve" in system, false)
 assert.equal(typeof system.desktop.size, "function")
 assert.equal("surface" in system, false)
 assert.equal(typeof system.pointer.position, "function")
@@ -118,11 +122,14 @@ assert.equal(messages.length, 0)
 
   writeFileSync(
     join(consumer, "consumer.ts"),
-    `import { current, system, Client, Server, type Appearance, type ClientServiceHandler, type DesktopSize, type SystemDesktop, type ServerServiceHandler, type Theme } from "@phreshos/client"
+    `import { current, system, Client, Server, type Appearance, type ClientServiceHandler, type DesktopSize, type SystemDesktop, type ServerServiceHandler, type SystemUploads, type Theme, type Upload } from "@phreshos/client"
 
 type CounterEvents = { change: number }
 
 const appearance: Promise<Appearance> = system.appearance.snapshot()
+const uploads: SystemUploads = system.uploads
+const upload: Promise<Upload> = uploads.write("hello")
+const uploadText: Promise<string> = uploads.text("00000000-0000-0000-0000-000000000000.txt")
 const theme: Promise<Theme> = system.theme.snapshot()
 const updateTheme: Promise<void> = system.theme.update("default")
 const systemDesktop: SystemDesktop = system.desktop
@@ -170,6 +177,8 @@ void current.program().then(program => {
 void localGeometry
 
 void theme
+void upload
+void uploadText
 void systemDesktop
 void desktopSize
 void counter

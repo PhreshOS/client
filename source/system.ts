@@ -1,18 +1,19 @@
 import type {
   AppearanceSource,
   ClientServiceHandler,
-  ServedFile,
   ServerServiceHandler,
   ServiceKey,
+  SystemUploads,
   SystemTheme
 } from "@phreshos/core"
 import ClientAppearance from "./appearance.js"
-import { content } from "./content.js"
 import ClientTheme from "./theme.js"
 import wire from "./wire.js"
 import ClientPointer, { type SystemPointer } from "./pointer.js"
 import ClientDesktop, { type SystemDesktop } from "./desktop.js"
 import { prepareService } from "./service.js"
+import { uploads } from "./uploads.js"
+import controlledStream from "./controlled-stream.js"
 
 type ServiceEndpoint = ServiceKey["endpoint"]
 
@@ -38,8 +39,8 @@ export interface System {
   /** Permission-guarded desktop pointer reads and live movement. */
   readonly pointer: SystemPointer
 
-  /** Stores one value as a publicly reachable file. */
-  serve(value: unknown): Promise<ServedFile>
+  /** Flat System-owned public uploads capability. */
+  readonly uploads: SystemUploads
 
   /** Performs an unrestricted server-side fetch on behalf of this Client. */
   fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>
@@ -61,31 +62,12 @@ class ClientSystem {
   public readonly theme = new ClientTheme() as unknown as SystemTheme
   public readonly desktop = new ClientDesktop() as unknown as SystemDesktop
   public readonly pointer = new ClientPointer() as unknown as SystemPointer
+  public readonly uploads = uploads
 
   public service<Endpoint extends ServiceEndpoint>(key: ServiceAddress<Endpoint>): ServiceHandle<Endpoint, {}>
   public service<ServiceEvents extends object>(key: ServiceAddress<"server">): ServerServiceHandler<ServiceEvents>
   public service<ServiceEvents extends object>(key: ServiceAddress<"client">): ClientServiceHandler<ServiceEvents>
   public service(key: ServiceKey) { return prepareService(key) }
-
-  public async serve(value: unknown): Promise<ServedFile> {
-    const source = content(value)
-    const channel = new MessageChannel()
-    const abort = () => channel.port1.postMessage("abort")
-
-    try {
-      const answer = await wire.request(
-        ["serve", source.body, { extension: source.extension, type: source.type }, channel.port2],
-        undefined,
-        source.body instanceof ReadableStream ? [source.body, channel.port2] : [channel.port2]
-      ) as [ServedFile]
-      channel.port1.close()
-      return answer[0]
-    } catch (error) {
-      abort()
-      channel.port1.close()
-      throw error
-    }
-  }
 
   public async fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
     const request = new Request(input, {
@@ -135,7 +117,7 @@ class ClientSystem {
     }
 
     const responseBody = result.body
-      ? controlled(result.body, abort, () => closeControl(request.signal, control.port1, abort))
+      ? controlledStream(result.body, abort, () => closeControl(request.signal, control.port1, abort))
       : null
 
     if (!responseBody) closeControl(request.signal, control.port1, abort)
@@ -193,30 +175,6 @@ function requestHeaders(normalized: Headers, supplied?: HeadersInit): [string, s
 
   const names = new Set(explicit.map(([name]) => name.toLowerCase()))
   return [...normalized.entries()].filter(([name]) => !names.has(name.toLowerCase())).concat(explicit)
-}
-
-function controlled(body: ReadableStream<Uint8Array>, abort: () => void, close: () => void) {
-  const reader = body.getReader()
-
-  return new ReadableStream<Uint8Array>({
-    async pull(controller) {
-      try {
-        const next = await reader.read()
-        if (next.done) {
-          close()
-          controller.close()
-        } else controller.enqueue(next.value)
-      } catch (error) {
-        close()
-        controller.error(error)
-      }
-    },
-    async cancel(reason) {
-      abort()
-      close()
-      await reader.cancel(reason)
-    }
-  })
 }
 
 function closeControl(signal: AbortSignal, port: MessagePort, abort: () => void) {

@@ -19,13 +19,17 @@ capabilities, or contain System and transport implementations.
 
 Its `System` contract exposes only desktop-session capabilities: read-only
 System Appearance, the mutable Theme local to this Desktop, desktop and pointer
-state, publicly served values, and unrestricted server-side Fetch.
+state, flat public uploads, and unrestricted server-side Fetch.
 `system.appearance.snapshot()` reads complete unresolved authoritative state.
 `system.theme.snapshot()` reads only the effective `"light" | "dark"` mode;
 `update("default")` resumes following the native environment. Both expose
 ordinary live-only `change` subscriptions with no initial replay. A Client
 cannot write authoritative Appearance or discover system-wide Programs and
 Processes.
+
+`system.uploads` has the same flat contract as the Server SDK. It writes a
+value, then reads or describes it using exactly one opaque generated file key;
+it exposes no filesystem path, path segments, listing, deletion, or clearing.
 
 Desktop and pointer access are independent objects rather than events merged
 into System:

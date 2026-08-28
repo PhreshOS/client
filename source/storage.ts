@@ -1,5 +1,6 @@
 import type { ProgramSql, ProgramStore, Storage } from "@phreshos/core"
 import { content, type ContentBody } from "./content.js"
+import controlledStream from "./controlled-stream.js"
 import wire from "./wire.js"
 
 /** Client-side Program storage, structurally scoped by the iframe boundary. */
@@ -27,7 +28,7 @@ export function area(which: "data" | "cache"): Storage {
       }
 
       if (!(answer[0] instanceof ReadableStream)) throw new Error("The storage response has no byte stream")
-      return controlled(answer[0], abort, close)
+      return controlledStream(answer[0], abort, close)
     } catch (error) {
       abort()
       close()
@@ -80,27 +81,4 @@ export function sql(kind: "database" | "logs"): ProgramSql {
       return answer[0]
     }
   }
-}
-
-function controlled(body: ReadableStream<Uint8Array>, abort: () => void, close: () => void) {
-  const reader = body.getReader()
-  return new ReadableStream<Uint8Array>({
-    async pull(controller) {
-      try {
-        const next = await reader.read()
-        if (next.done) {
-          close()
-          controller.close()
-        } else controller.enqueue(next.value)
-      } catch (error) {
-        close()
-        controller.error(error)
-      }
-    },
-    async cancel(reason) {
-      abort()
-      close()
-      await reader.cancel(reason)
-    }
-  })
 }
