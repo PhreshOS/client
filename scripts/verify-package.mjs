@@ -92,8 +92,8 @@ assert.equal(typeof current.enableService, "function")
 assert.equal(typeof current.disableService, "function")
 assert.equal("enableService" in current.server, false)
 assert.equal("disableService" in current.server, false)
-assert.equal(typeof system.theme.snapshot, "function")
-assert.equal(typeof system.theme.update, "function")
+assert.equal(typeof system.desktopPreferences.snapshot, "function")
+assert.equal(typeof system.desktopPreferences.update, "function")
 assert.equal(typeof system.appearance.snapshot, "function")
 assert.equal(typeof system.uploads.write, "function")
 assert.equal(typeof system.uploads.stream, "function")
@@ -128,7 +128,7 @@ assert.equal(messages.length, 0)
 
   writeFileSync(
     join(consumer, "consumer.ts"),
-    `import { current, system, Client, Server, type Appearance, type ClientServiceHandler, type DesktopSize, type SystemDesktop, type ServerServiceHandler, type SystemUploads, type Theme, type Upload } from "@phreshos/client"
+    `import { current, system, Client, Server, type Appearance, type ClientServiceHandler, type DesktopPreferences, type DesktopSize, type SystemDesktop, type ServerServiceHandler, type SystemUploads, type Upload } from "@phreshos/client"
 
 type CounterEvents = { change: number }
 
@@ -136,8 +136,8 @@ const appearance: Promise<Appearance> = system.appearance.snapshot()
 const uploads: SystemUploads = system.uploads
 const upload: Promise<Upload> = uploads.write("hello")
 const uploadText: Promise<string> = uploads.text("00000000-0000-0000-0000-000000000000.txt")
-const theme: Promise<Theme> = system.theme.snapshot()
-const updateTheme: Promise<void> = system.theme.update("default")
+const preferences: Promise<DesktopPreferences> = system.desktopPreferences.snapshot()
+const updatePreferences: Promise<void> = system.desktopPreferences.update({ theme: "default", animations: false })
 const systemDesktop: SystemDesktop = system.desktop
 const desktopSize: Promise<DesktopSize> = system.desktop.size()
 const counter: ServerServiceHandler<CounterEvents> = system.service<CounterEvents>({ program: "counter", endpoint: "server", name: "state" })

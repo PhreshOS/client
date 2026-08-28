@@ -1,13 +1,13 @@
 import type {
   AppearanceSource,
   ClientServiceHandler,
+  SystemDesktopPreferences,
   ServerServiceHandler,
   ServiceKey,
-  SystemUploads,
-  SystemTheme
+  SystemUploads
 } from "@phreshos/core"
 import ClientAppearance from "./appearance.js"
-import ClientTheme from "./theme.js"
+import ClientDesktopPreferences from "./desktop-preferences.js"
 import wire from "./wire.js"
 import ClientPointer, { type SystemPointer } from "./pointer.js"
 import ClientDesktop, { type SystemDesktop } from "./desktop.js"
@@ -30,8 +30,8 @@ export interface System {
   /** Complete unresolved Appearance read from the System authority. */
   readonly appearance: AppearanceSource
 
-  /** Mutable effective Theme local to this Desktop. */
-  readonly theme: SystemTheme
+  /** Mutable effective preferences local to this Desktop. */
+  readonly desktopPreferences: SystemDesktopPreferences
 
   /** Layer-independent desktop size reads and live updates. */
   readonly desktop: SystemDesktop
@@ -59,7 +59,7 @@ export interface System {
 
 class ClientSystem {
   public readonly appearance = new ClientAppearance() as unknown as AppearanceSource
-  public readonly theme = new ClientTheme() as unknown as SystemTheme
+  public readonly desktopPreferences = new ClientDesktopPreferences() as unknown as SystemDesktopPreferences
   public readonly desktop = new ClientDesktop() as unknown as SystemDesktop
   public readonly pointer = new ClientPointer() as unknown as SystemPointer
   public readonly uploads = uploads
