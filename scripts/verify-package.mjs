@@ -182,7 +182,8 @@ void current.program().then(program => {
 })
 void localGeometry
 
-void theme
+void preferences
+void updatePreferences
 void upload
 void uploadText
 void systemDesktop
