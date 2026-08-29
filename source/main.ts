@@ -4,9 +4,9 @@ export { type DesktopEvents, type DesktopSize, type SystemDesktop } from "./desk
 export { current, type Current, type CurrentServer } from "./current.js"
 export { type Channel, type ChannelCapture, type ChannelEvents, type ChannelMessage } from "./channel.js"
 export {
-  ClientServiceHandler,
-  ServerServiceHandler,
-  ServiceHandler,
+  ClientService,
+  ServerService,
+  Service,
   type ClientServiceChannel,
   type ServerServiceChannel,
   type ServiceChannel,

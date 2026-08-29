@@ -1,8 +1,8 @@
 import type {
   AppearanceSource,
-  ClientServiceHandler,
+  ClientService,
   SystemDesktopPreferences,
-  ServerServiceHandler,
+  ServerService,
   ServiceKey,
   SystemUploads
 } from "@phreshos/core"
@@ -22,8 +22,8 @@ type ServiceAddress<Endpoint extends ServiceEndpoint> = Omit<ServiceKey, "endpoi
 }>
 
 type ServiceHandle<Endpoint extends ServiceEndpoint, Events extends object> = Endpoint extends "server"
-  ? ServerServiceHandler<Events>
-  : ClientServiceHandler<Events>
+  ? ServerService<Events>
+  : ClientService<Events>
 
 /** Desktop capabilities structurally available to a Client endpoint. */
 export interface System {
@@ -51,10 +51,10 @@ export interface System {
   ): ServiceHandle<Endpoint, {}>
 
   /** Returns a typed stable handle for one exact Server service identity. */
-  service<ServiceEvents extends object>(key: ServiceAddress<"server">): ServerServiceHandler<ServiceEvents>
+  service<ServiceEvents extends object>(key: ServiceAddress<"server">): ServerService<ServiceEvents>
 
   /** Returns a typed stable handle for one exact Client service identity. */
-  service<ServiceEvents extends object>(key: ServiceAddress<"client">): ClientServiceHandler<ServiceEvents>
+  service<ServiceEvents extends object>(key: ServiceAddress<"client">): ClientService<ServiceEvents>
 }
 
 class ClientSystem {
@@ -65,8 +65,8 @@ class ClientSystem {
   public readonly uploads = uploads
 
   public service<Endpoint extends ServiceEndpoint>(key: ServiceAddress<Endpoint>): ServiceHandle<Endpoint, {}>
-  public service<ServiceEvents extends object>(key: ServiceAddress<"server">): ServerServiceHandler<ServiceEvents>
-  public service<ServiceEvents extends object>(key: ServiceAddress<"client">): ClientServiceHandler<ServiceEvents>
+  public service<ServiceEvents extends object>(key: ServiceAddress<"server">): ServerService<ServiceEvents>
+  public service<ServiceEvents extends object>(key: ServiceAddress<"client">): ClientService<ServiceEvents>
   public service(key: ServiceKey) { return prepareService(key) }
 
   public async fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {

@@ -77,7 +77,7 @@ const messages = []
 const parent = { postMessage: message => messages.push(message) }
 globalThis.window = { parent, addEventListener() {} }
 
-const { Client, Endpoint, Process, Program, Server, ServerServiceHandler, ServiceHandler, current, system } = await import("@phreshos/client")
+const { Client, ClientService, Endpoint, Process, Program, Server, ServerService, Service, current, system } = await import("@phreshos/client")
 
 assert.equal(Program, core.Program)
 assert.equal(Process, core.Process)
@@ -110,9 +110,13 @@ assert.equal(typeof current.permission.granted, "function")
 assert.equal(typeof current.permission.request, "function")
 assert.equal("permission" in system, false)
 const service = system.service({ program: "counter", endpoint: "server", name: "state" })
+const clientService = system.service({ program: "counter", endpoint: "client", name: "state" })
 assert.equal(service, system.service({ program: "counter", endpoint: "server", name: "state" }))
-assert(service instanceof ServiceHandler)
-assert(service instanceof ServerServiceHandler)
+assert.equal(clientService, system.service({ program: "counter", endpoint: "client", name: "state" }))
+assert(service instanceof Service)
+assert(service instanceof ServerService)
+assert(clientService instanceof Service)
+assert(clientService instanceof ClientService)
 assert.equal("program" in service, false)
 assert.equal("endpoint" in service, false)
 assert.equal(typeof service.enabled, "function")
@@ -128,7 +132,7 @@ assert.equal(messages.length, 0)
 
   writeFileSync(
     join(consumer, "consumer.ts"),
-    `import { current, system, Client, Server, type Appearance, type ClientServiceHandler, type DesktopPreferences, type DesktopSize, type SystemDesktop, type ServerServiceHandler, type SystemUploads, type Upload } from "@phreshos/client"
+    `import { current, system, Client, Server, type Appearance, type ClientService, type DesktopPreferences, type DesktopSize, type SystemDesktop, type ServerService, type SystemUploads, type Upload } from "@phreshos/client"
 
 type CounterEvents = { change: number }
 
@@ -140,9 +144,9 @@ const preferences: Promise<DesktopPreferences> = system.desktopPreferences.snaps
 const updatePreferences: Promise<void> = system.desktopPreferences.update({ theme: "default", animations: false })
 const systemDesktop: SystemDesktop = system.desktop
 const desktopSize: Promise<DesktopSize> = system.desktop.size()
-const counter: ServerServiceHandler<CounterEvents> = system.service<CounterEvents>({ program: "counter", endpoint: "server", name: "state" })
-const clientCounter: ClientServiceHandler<CounterEvents> = system.service<CounterEvents>({ program: "counter", endpoint: "client", name: "state" })
-const inferredClientCounter: ClientServiceHandler = system.service({ program: "counter", endpoint: "client", name: "state" })
+const counter: ServerService<CounterEvents> = system.service<CounterEvents>({ program: "counter", endpoint: "server", name: "state" })
+const clientCounter: ClientService<CounterEvents> = system.service<CounterEvents>({ program: "counter", endpoint: "client", name: "state" })
+const inferredClientCounter: ClientService = system.service({ program: "counter", endpoint: "client", name: "state" })
 const counterStop = counter.channel.subscribe("change", value => void value)
 const counterAnswer: Promise<number> = counter.channel.ask<number>("value")
 const expose: Promise<void> = current.enableService("state")
