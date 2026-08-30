@@ -80,7 +80,10 @@ const service = system.service({
 })
 
 await service.waitReady()
-if (await service.enabled()) await service.channel.ask("value")
+if (await service.enabled()) await service.ask("value")
+
+service.subscribe("changed", message => console.log(message))
+service.lifecycle.subscribe("disable", () => console.log("unavailable"))
 ```
 
 A Client may traverse `Process.parent()` through any number of ancestors in
@@ -98,8 +101,8 @@ into the endpoint. Identity, Theme, Process, Window, readiness, lifecycle, and
 application values enter only in response to an explicit request or a live
 registration made by Program code.
 
-`Context` combines navigation into the executing Client's Process with its
-Channel. The paired Server is explicitly named as
+`Context` combines communication with navigation into the executing Client's
+Process. The paired Server is explicitly named as
 `context.server`; its publishing, asking, existence, readiness, start, and stop
 operations never masquerade as properties of `context`. `context.stop()` stops
 the executing Client, while complete Process exit remains available only
@@ -131,11 +134,12 @@ them. These are the same domain classes used by the Server SDK, so
 `ClientTraffic`, is a type-only capability owned by Client and has no
 independent `instanceof` identity.
 
-The executing Client's Channel is composed directly into `context`. Its
+The executing Client's communication belongs directly to `context`. Its
 subscription tools receive events addressed to this Client, while `publish()`
-emits outward from this Client without choosing a destination. Existence,
-readiness, and lifecycle operations belong to `context.server`,
-`context.stop()`, or an explicit Endpoint handle.
+emits outward from this Client without choosing a destination. Existence and
+readiness belong to `context.server`; the current Client stops through
+`context.stop()`, and explicit Endpoint handles expose their own
+`endpoint.lifecycle` subscriptions.
 
 An Endpoint handle is also a selective source: `endpoint.subscribe()` follows
 destinationless events emitted by that Endpoint. Its `traffic` property remains

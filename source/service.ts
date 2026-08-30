@@ -2,12 +2,11 @@ import {
   ClientService as CoreClientService,
   ServerService as CoreServerService,
   isServiceKey,
-  type ClientServiceChannel,
   type ClientService,
-  type ServerServiceChannel,
   type ServerService,
   type Service,
-  type ServiceKey
+  type ServiceKey,
+  type ServiceLifecycle
 } from "@phreshos/core"
 import Deadline from "./deadline.js"
 import Events from "./events.js"
@@ -19,9 +18,15 @@ const handles = new HandleRegistry()
 const ServerServiceBase = CoreServerService as unknown as new () => object
 const ClientServiceBase = CoreClientService as unknown as new () => object
 
-class ServerChannelHandle extends Events {
-  public constructor(private readonly key: ServiceKey) {
-    super(...serviceEvents(key, "channel"))
+class ServerHandler extends ServerServiceBase {
+  public readonly name: string
+  public readonly lifecycle: ServiceLifecycle
+
+  public constructor(private readonly key: ServiceKey & { endpoint: "server" }) {
+    super()
+    this.name = key.name
+    this.lifecycle = new Events(...serviceEvents(key, "lifecycle")) as unknown as ServiceLifecycle
+    bindEvents(this, new Events(...serviceEvents(key, "events")))
   }
 
   public publish(event: string, payload: unknown = undefined) {
@@ -40,6 +45,15 @@ class ServerChannelHandle extends Events {
     }
   }
 
+  public async enabled() {
+    const answer = await wire.request(["service-enabled", this.key]) as [boolean]
+    return answer[0]
+  }
+
+  public async waitReady(timeout?: number) {
+    await wire.request(["service-wait-ready", this.key, timeout], timeout)
+  }
+
   private async askWithin<Answer>(deadline: Deadline, event: string, payload: unknown) {
     const identity = await wire.identity()
     const address = `client:${identity.process}:${crypto.randomUUID()}`
@@ -53,43 +67,15 @@ class ServerChannelHandle extends Events {
   }
 }
 
-class ClientChannelHandle extends Events {
-  public constructor(key: ServiceKey) {
-    super(...serviceEvents(key, "channel"))
-  }
-}
-
-class ServerHandler<EventsMap extends object = {}> extends ServerServiceBase {
+class ClientHandler extends ClientServiceBase {
   public readonly name: string
-  public readonly channel: ServerServiceChannel<EventsMap>
-
-  public constructor(private readonly key: ServiceKey & { endpoint: "server" }) {
-    super()
-    this.name = key.name
-    this.channel = new ServerChannelHandle(key) as unknown as ServerServiceChannel<EventsMap>
-    bindEvents(this, new Events(...serviceEvents(key, "lifecycle")))
-  }
-
-  public async enabled() {
-    const answer = await wire.request(["service-enabled", this.key]) as [boolean]
-    return answer[0]
-  }
-
-  public async waitReady(timeout?: number) {
-    await wire.request(["service-wait-ready", this.key, timeout], timeout)
-  }
-
-}
-
-class ClientHandler<EventsMap extends object = {}> extends ClientServiceBase {
-  public readonly name: string
-  public readonly channel: ClientServiceChannel<EventsMap>
+  public readonly lifecycle: ServiceLifecycle
 
   public constructor(private readonly key: ServiceKey & { endpoint: "client" }) {
     super()
     this.name = key.name
-    this.channel = new ClientChannelHandle(key) as unknown as ClientServiceChannel<EventsMap>
-    bindEvents(this, new Events(...serviceEvents(key, "lifecycle")))
+    this.lifecycle = new Events(...serviceEvents(key, "lifecycle")) as unknown as ServiceLifecycle
+    bindEvents(this, new Events(...serviceEvents(key, "events")))
   }
 
   public async enabled() {
@@ -137,11 +123,11 @@ export async function endpointService(target: HandleAddress | null, endpoint: "s
   return answer[0] ? prepareService(answer[0]) : null
 }
 
-function serviceEvents(key: ServiceKey, scope: "lifecycle" | "channel") {
+function serviceEvents(key: ServiceKey, scope: "lifecycle" | "events") {
   return [
     (event: string, listener: (message: unknown) => unknown) => wire.followService(key, scope, event, listener),
-    (observer: (event: string, message: unknown) => unknown) => wire.followService(key, scope, null, (event, payload) => {
-      if (typeof event === "string") observer(event, payload)
+    (listener: (event: string, message: unknown) => unknown) => wire.followService(key, scope, null, (event, payload) => {
+      if (typeof event === "string") listener(event, payload)
     })
   ] as const satisfies ConstructorParameters<typeof Events>
 }
@@ -150,7 +136,6 @@ function bindEvents(target: object, events: Events) {
   Object.assign(target, {
     subscribe: events.subscribe.bind(events),
     waitFor: events.waitFor.bind(events),
-    events: events.events.bind(events),
-    observe: events.observe.bind(events)
+    events: events.events.bind(events)
   })
 }

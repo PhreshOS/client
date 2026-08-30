@@ -92,6 +92,7 @@ assert.equal(typeof context.window.local, "object")
 assert.equal("localWindow" in context, false)
 assert.equal(typeof context.enableService, "function")
 assert.equal(typeof context.disableService, "function")
+assert.equal("channel" in context, false)
 assert.equal("enableService" in context.server, false)
 assert.equal("disableService" in context.server, false)
 assert.equal(typeof system.desktopPreferences.snapshot, "function")
@@ -123,6 +124,9 @@ assert.equal("program" in service, false)
 assert.equal("endpoint" in service, false)
 assert.equal(typeof service.enabled, "function")
 assert.equal(typeof service.waitReady, "function")
+assert.equal(typeof service.subscribe, "function")
+assert.equal(typeof service.lifecycle.subscribe, "function")
+assert.equal("channel" in service, false)
 assert.equal("docs" in service, false)
 assert.equal(messages.length, 0)
 `
@@ -151,8 +155,9 @@ const desktopSize: Promise<DesktopSize> = system.desktop.size()
 const counter: ServerService<CounterEvents> = system.service<CounterEvents>({ program: "counter", endpoint: "server", name: "state" })
 const clientCounter: ClientService<CounterEvents> = system.service<CounterEvents>({ program: "counter", endpoint: "client", name: "state" })
 const inferredClientCounter: ClientService = system.service({ program: "counter", endpoint: "client", name: "state" })
-const counterStop = counter.channel.subscribe("change", value => void value)
-const counterAnswer: Promise<number> = counter.channel.ask<number>("value")
+const counterStop = counter.subscribe("change", value => void value)
+const counterLifecycleStop = counter.lifecycle.subscribe("enable", () => undefined)
+const counterAnswer: Promise<number> = counter.ask<number>("value")
 const expose: Promise<void> = context.enableService("state")
 const program = await context.program()
 const hasAgent: boolean = program.hasAgent
@@ -200,6 +205,7 @@ void counter
 void clientCounter
 void inferredClientCounter
 void counterStop
+void counterLifecycleStop
 void counterAnswer
 void expose
 void hasAgent

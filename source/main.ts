@@ -1,16 +1,20 @@
 export { system, type System } from "./system.js"
 export { type SystemPointer, type PointerEvents, type PointerPosition } from "./pointer.js"
 export { type DesktopEvents, type DesktopSize, type SystemDesktop } from "./desktop.js"
-export { context, type Context, type ContextServer } from "./context.js"
-export { type Channel, type ChannelCapture, type ChannelEvents, type ChannelMessage } from "./channel.js"
+export {
+  context,
+  type Context,
+  type ContextCapture,
+  type ContextEvents,
+  type ContextMessage,
+  type ContextServer
+} from "./context.js"
 export {
   ClientService,
   ServerService,
   Service,
-  type ClientServiceChannel,
-  type ServerServiceChannel,
-  type ServiceChannel,
   type ServiceKey,
+  type ServiceLifecycle,
   type ServiceLifecycleEvents
 } from "@phreshos/core"
 export {
@@ -23,10 +27,10 @@ export {
   type ProgramProcess,
   type AnswerCapture,
   type AnswerMessage,
-  type AnswerObserver,
+  type AnswerSubscriber,
   type AskCapture,
   type AskMessage,
-  type AskObserver,
+  type AskSubscriber,
   type ClientTraffic,
   type EndpointTraffic,
   type ServerTraffic,
@@ -39,14 +43,16 @@ export type {
   Askable,
   Capture,
   Captures,
+  CaptureSubscriber,
   ClientDeclaration,
   Cleanup,
   DirectoryStat,
   EndpointDeclaration,
+  EndpointLifecycle,
+  EndpointLifecycleEvents,
   EntryStat,
   EventMessage,
   EventName,
-  EventObserver,
   EventOptions,
   EventSubscriber,
   Exit,

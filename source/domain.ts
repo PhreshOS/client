@@ -6,16 +6,18 @@ import {
   Server as CoreServer,
   type AnswerCapture as CoreAnswerCapture,
   type AnswerMessage as CoreAnswerMessage,
-  type AnswerObserver as CoreAnswerObserver,
+  type AnswerSubscriber as CoreAnswerSubscriber,
   type AskCapture as CoreAskCapture,
   type AskMessage as CoreAskMessage,
-  type AskObserver as CoreAskObserver,
+  type AskSubscriber as CoreAskSubscriber,
   type Cleanup,
   type ClientTraffic as CoreClientTraffic,
   type ClientDeclaration,
   type EndpointTraffic as CoreEndpointTraffic,
+  type EndpointLifecycle,
   type EndpointDeclaration,
   type Exit,
+  type EventOptions,
   type Launch,
   type LaunchClient,
   type LocalWindow,
@@ -36,7 +38,7 @@ import {
   type WindowState,
   type Transaction
 } from "@phreshos/core"
-import Events from "./events.js"
+import Events, { stream } from "./events.js"
 import Deadline from "./deadline.js"
 import HandleRegistry from "./handle-registry.js"
 import { area, sql, store } from "./storage.js"
@@ -152,7 +154,7 @@ export type AskMessage<Payload = unknown> = CoreAskMessage<Payload, Server | nul
 export type AskCapture<Payload = unknown> = CoreAskCapture<Payload, Server | null>
 
 /** Callback that observes questions sent by a client-visible Endpoint. */
-export type AskObserver<Payload = unknown> = CoreAskObserver<Payload, Server | null>
+export type AskSubscriber<Payload = unknown> = CoreAskSubscriber<Payload, Server | null>
 
 /** Answer with an Endpoint destination hidden when it crosses the Client boundary. */
 export type AnswerMessage<Result = unknown> = CoreAnswerMessage<Result, Endpoint | null>
@@ -161,7 +163,7 @@ export type AnswerMessage<Result = unknown> = CoreAnswerMessage<Result, Endpoint
 export type AnswerCapture<Result = unknown> = CoreAnswerCapture<Result, Endpoint | null>
 
 /** Callback that observes answers sent by a client-visible Server. */
-export type AnswerObserver<Result = unknown> = CoreAnswerObserver<Result, Endpoint | null>
+export type AnswerSubscriber<Result = unknown> = CoreAnswerSubscriber<Result, Endpoint | null>
 
 /** Directed communication originating from one client-visible Endpoint. */
 export type EndpointTraffic<Events extends object = {}> = CoreEndpointTraffic<Events, Endpoint | null, Server | null>
@@ -394,36 +396,54 @@ export class TrafficHandle extends Events {
   public constructor(protected readonly target: HandleAddress | null, protected readonly kind: "server" | "client") {
     super(
       (event, listener, impossible) => wire.observe(target, kind, "publish", event, value => listener(trafficMessage(value)), impossible),
-      observer => wire.observe(target, kind, "publish", null, (event, value) => {
-        if (typeof event === "string") observer(event, trafficMessage(value))
-      })
+      (listener, impossible) => wire.observe(target, kind, "publish", null, (event, value) => {
+        if (typeof event === "string") listener(event, trafficMessage(value))
+      }, impossible)
     )
   }
 
-  public observeAsks(observer: (capture: AskCapture) => unknown): Cleanup {
+  public subscribeAsks(subscriber: (capture: AskCapture) => unknown): Cleanup {
+    return this.followAsks(subscriber)
+  }
+
+  public asks(options?: EventOptions) {
+    return stream<AskCapture>((subscriber, impossible) => this.followAsks(subscriber, impossible), options)
+  }
+
+  private followAsks(subscriber: (capture: AskCapture) => unknown, impossible?: (error: Error) => void): Cleanup {
     return wire.observe(this.target, this.kind, "ask", null, (event, questionId, value) => {
       if (typeof event !== "string" || typeof questionId !== "string") return
-      observer({ event, questionId, message: trafficMessage(value) as AskCapture["message"] })
-    })
+      subscriber({ event, questionId, message: trafficMessage(value) as AskCapture["message"] })
+    }, impossible)
   }
 }
 
 export class ServerTrafficHandle extends TrafficHandle {
-  public observeAnswers(observer: (capture: AnswerCapture) => unknown): Cleanup {
+  public subscribeAnswers(subscriber: (capture: AnswerCapture) => unknown): Cleanup {
+    return this.followAnswers(subscriber)
+  }
+
+  public answers(options?: EventOptions) {
+    return stream<AnswerCapture>((subscriber, impossible) => this.followAnswers(subscriber, impossible), options)
+  }
+
+  private followAnswers(subscriber: (capture: AnswerCapture) => unknown, impossible?: (error: Error) => void): Cleanup {
     return wire.observe(this.target, "server", "answer", null, (event, questionId, value) => {
       if (typeof event !== "string" || typeof questionId !== "string") return
       const raw = value as { to?: EndpointReference | null, outcome?: Outcome }
-      observer({ event, questionId, message: { to: visibleEndpoint(raw.to), outcome: raw.outcome as Outcome } })
-    })
+      subscriber({ event, questionId, message: { to: visibleEndpoint(raw.to), outcome: raw.outcome as Outcome } })
+    }, impossible)
   }
 }
 
 class ServerHandle extends ServerBase {
   public readonly traffic: ServerTrafficHandle
+  public readonly lifecycle: EndpointLifecycle
 
   public constructor(private readonly owner: ProcessHandle) {
     super()
     this.traffic = new ServerTrafficHandle(owner.address, "server")
+    this.lifecycle = endpointLifecycle(() => Promise.resolve(owner.address), "server") as unknown as EndpointLifecycle
     bindEvents(this, endpointEvents(owner.address, "server"))
   }
 
@@ -464,11 +484,13 @@ class ServerHandle extends ServerBase {
 
 class ClientHandle extends ClientBase {
   public readonly traffic: TrafficHandle
+  public readonly lifecycle: EndpointLifecycle
   public readonly window: Window
 
   public constructor(private readonly owner: ProcessHandle) {
     super()
     this.traffic = new TrafficHandle(owner.address, "client")
+    this.lifecycle = endpointLifecycle(() => Promise.resolve(owner.address), "client") as unknown as EndpointLifecycle
     this.window = window(async () => owner.address)
     bindEvents(this, endpointEvents(owner.address, "client"))
   }
@@ -568,11 +590,11 @@ function deferredScoped(route: string, target: WindowTarget, convert: (event: st
         if (message) listener(convert(event, message))
       }, subject, impossible), impossible)
     },
-    observer => deferred(target, subject => wire.onAll(route, (event, ...values) => {
+    (listener, impossible) => deferred(target, subject => wire.onAll(route, (event, ...values) => {
       if (typeof event !== "string" || !windowEvent(event)) return
       const message = unscoped(subject, values)
-      if (message) observer(event, convert(event, message))
-    }, subject))
+      if (message) listener(event, convert(event, message))
+    }, subject, impossible), impossible)
   ] as const satisfies ConstructorParameters<typeof Events>
 }
 
@@ -604,11 +626,11 @@ export function scoped(route: string, subject: string | null, convert: (event: s
       const message = unscoped(subject, values)
       if (message) listener(convert(event, message))
     }, subject, impossible),
-    observer => wire.onAll(route, (event, ...values) => {
+    (listener, impossible) => wire.onAll(route, (event, ...values) => {
       if (typeof event !== "string") return
       const message = unscoped(subject, values)
-      if (message) observer(event, convert(event, message))
-    }, subject)
+      if (message) listener(event, convert(event, message))
+    }, subject, impossible)
   )
 }
 
@@ -616,10 +638,37 @@ export function scoped(route: string, subject: string | null, convert: (event: s
 export function endpointEvents(target: HandleAddress | null, half: "server" | "client") {
   return new Events(
     (event, listener, impossible) => wire.follow(target, half, event, listener, impossible),
-    observer => wire.follow(target, half, null, (event, payload) => {
-      if (typeof event === "string") observer(event, payload)
-    })
+    (listener, impossible) => wire.follow(target, half, null, (event, payload) => {
+      if (typeof event === "string") listener(event, payload)
+    }, impossible)
   )
+}
+
+/** Start and stop transitions belonging directly to one permanent Endpoint. */
+export function endpointLifecycle(target: WindowTarget, half: "server" | "client") {
+  return new Events(
+    (event, listener, impossible) => deferred(target, subject => wire.on(
+      "process-host",
+      endpointLifecycleEvent(event),
+      (...values) => {
+        const message = unscoped(subject, values)
+        if (message?.[1] === half) listener(undefined)
+      },
+      subject,
+      impossible
+    ), impossible),
+    (listener, impossible) => deferred(target, subject => wire.onAll("process-host", (event, ...values) => {
+      if (event !== "endpointStart" && event !== "endpointStop") return
+      const message = unscoped(subject, values)
+      if (message?.[1] === half) listener(event === "endpointStart" ? "start" : "stop", undefined)
+    }, subject, impossible), impossible)
+  )
+}
+
+function endpointLifecycleEvent(event: string) {
+  if (event === "start") return "endpointStart"
+  if (event === "stop") return "endpointStop"
+  return event
 }
 
 function unscoped(subject: string | null, values: unknown[]) {
@@ -669,8 +718,7 @@ export function bindEvents(target: object, events: Events) {
   Object.assign(target, {
     subscribe: events.subscribe.bind(events),
     waitFor: events.waitFor.bind(events),
-    events: events.events.bind(events),
-    observe: events.observe.bind(events)
+    events: events.events.bind(events)
   })
 }
 
