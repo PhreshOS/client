@@ -23,18 +23,18 @@ import wire from "./wire.js"
 import { endpointService } from "./service.js"
 import { currentProgramPermission } from "./permissions.js"
 
-/** The current Process's canonical Server handle. */
-export type CurrentServer<Events extends object = {}> = Server<Events>
+/** The executing Process's canonical Server handle. */
+export type ContextServer<Events extends object = {}> = Server<Events>
 
-/** Current Client context: its inbound Channel, owner hierarchy, and paired Server. */
-export interface Current<Events extends object = {}> extends Channel<Events>, Pick<Client, "service"> {
-  /** The same Server handle exposed by the current Process. */
-  readonly server: CurrentServer
+/** Client runtime context: its inbound Channel, owner hierarchy, and paired Server. */
+export interface Context<Events extends object = {}> extends Channel<Events>, Pick<Client, "service"> {
+  /** The same Server handle exposed by the executing Process. */
+  readonly server: ContextServer
 
-  /** Presentation capability of this current Client. */
+  /** Presentation capability of the executing Client. */
   readonly window: Window
 
-  /** The same permission capability exposed by the current Program. */
+  /** The same permission capability exposed by the executing Program. */
   readonly permission: Program["permission"]
 
   /** Returns the Process represented by this Client. */
@@ -49,7 +49,7 @@ export interface Current<Events extends object = {}> extends Channel<Events>, Pi
   /** Returns one immutable option supplied when this Process was created. */
   option(name: string): Promise<string | undefined>
 
-  /** Stops the current Client; rejects when it is the final live Endpoint. */
+  /** Stops the executing Client; rejects when it is the final live Endpoint. */
   stop(): Promise<void>
 
 }
@@ -57,7 +57,7 @@ export interface Current<Events extends object = {}> extends Channel<Events>, Pi
 const ServerBase = Server as unknown as new () => object
 const ClientBase = Client as unknown as new () => object
 
-class CurrentServerHandle extends ServerBase {
+class ContextServerHandle extends ServerBase {
   public readonly traffic = new ServerTrafficHandle(null, "server") as unknown as ServerTraffic
 
   public constructor(private readonly owner: () => Promise<Process>) {
@@ -94,13 +94,13 @@ class CurrentServerHandle extends ServerBase {
 }
 
 let ownerPromise: Promise<Process> | null = null
-let currentServer!: CurrentServer
-let currentClient!: Client
+let contextServer!: ContextServer
+let contextClient!: Client
 
 function owner() {
   if (!ownerPromise) {
     const resolving = wire.request(["current-process"]).then(answer => {
-      return process((answer as [ProcessRecord])[0], { server: currentServer, client: currentClient })
+      return process((answer as [ProcessRecord])[0], { server: contextServer, client: contextClient })
     })
 
     const retained = resolving.catch(error => {
@@ -114,9 +114,9 @@ function owner() {
   return ownerPromise
 }
 
-currentServer = new CurrentServerHandle(owner) as unknown as CurrentServer
+contextServer = new ContextServerHandle(owner) as unknown as ContextServer
 
-class CurrentClientHandle extends ClientBase {
+class ContextClientHandle extends ClientBase {
   public readonly traffic = new TrafficHandle(null, "client") as unknown as ClientTraffic
   public readonly window = windowHandle(async () => {
     const identity = await wire.identity()
@@ -145,11 +145,11 @@ class CurrentClientHandle extends ClientBase {
   public service<ServiceEvents extends object = {}>() { return endpointService<ServiceEvents>(null, "client") }
 }
 
-currentClient = new CurrentClientHandle(owner) as unknown as Client
+contextClient = new ContextClientHandle(owner) as unknown as Client
 
-class ClientCurrent {
-  public readonly server = currentServer
-  public readonly window = currentClient.window
+class ClientContext {
+  public readonly server = contextServer
+  public readonly window = contextClient.window
   public readonly permission = currentProgramPermission
 
   public constructor() {
@@ -189,5 +189,5 @@ function bindChannel(target: object, source: Channel) {
   })
 }
 
-/** Inbound events, owner hierarchy, and paired Server for the current Client. */
-export const current = new ClientCurrent() as unknown as Current
+/** Inbound events, owner hierarchy, and paired Server for this Client runtime. */
+export const context = new ClientContext() as unknown as Context

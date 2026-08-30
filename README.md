@@ -51,17 +51,17 @@ requests; subscriptions receive only future publications and never replay a
 retained value.
 
 Permission decisions belong to the current Program, not to the desktop System.
-They are available from a Program handle and flattened through `current` as the
+They are available from a Program handle and flattened through `context` as the
 same canonical capability:
 
 ```ts
-const program = await current.program()
+const program = await context.program()
 
 await program.permission.granted("pointer")
-await current.permission.request("pointer")
-await current.permission.timeout(5_000).request("pointer")
+await context.permission.request("pointer")
+await context.permission.timeout(5_000).request("pointer")
 
-current.permission === program.permission
+context.permission === program.permission
 ```
 
 `granted()` reads the effective decision without prompting. `request()` asks
@@ -98,13 +98,13 @@ into the endpoint. Identity, Theme, Process, Window, readiness, lifecycle, and
 application values enter only in response to an explicit request or a live
 registration made by Program code.
 
-`Current` combines navigation into the executing Client's Process with its
+`Context` combines navigation into the executing Client's Process with its
 Channel. The paired Server is explicitly named as
-`current.server`; its publishing, asking, existence, readiness, start, and stop
-operations never masquerade as properties of `current`. `current.stop()` stops
+`context.server`; its publishing, asking, existence, readiness, start, and stop
+operations never masquerade as properties of `context`. `context.stop()` stops
 the executing Client, while complete Process exit remains available only
-through `current.process()`. It is the canonical Process-owned handle, so
-`current.server === (await current.process()).server`.
+through `context.process()`. It is the canonical Process-owned handle, so
+`context.server === (await context.process()).server`.
 Endpoint `process()` navigation is asynchronous; contextual ownership is
 requested only when navigation needs it and then retained by the SDK.
 
@@ -121,7 +121,7 @@ absence or incarnation loss rejects without turning the boundary into a waiter.
 The package provides two contextual runtime entry points:
 
 ```ts
-import { system, current } from "@phreshos/client"
+import { system, context } from "@phreshos/client"
 ```
 
 It also re-exports the shared Core runtime classes—`Program`, `Process`,
@@ -131,11 +131,11 @@ them. These are the same domain classes used by the Server SDK, so
 `ClientTraffic`, is a type-only capability owned by Client and has no
 independent `instanceof` identity.
 
-The current Client's Channel is composed directly into `current`. Its
+The executing Client's Channel is composed directly into `context`. Its
 subscription tools receive events addressed to this Client, while `publish()`
 emits outward from this Client without choosing a destination. Existence,
-readiness, and lifecycle operations belong to `current.server`,
-`current.stop()`, or an explicit Endpoint handle.
+readiness, and lifecycle operations belong to `context.server`,
+`context.stop()`, or an explicit Endpoint handle.
 
 An Endpoint handle is also a selective source: `endpoint.subscribe()` follows
 destinationless events emitted by that Endpoint. Its `traffic` property remains
@@ -151,7 +151,7 @@ They deliberately omit `install()` and `fork()`, and their `Storage` values neve
 expose native filesystem paths. Every Client-side Window handle exposes the same
 authoritative, subscribable Window capability and its `window.local` physical
 representation on this desktop. Local reads and updates have no events and do
-not change Server state. `current.window` is only convenient access to the
+not change Server state. `context.window` is only convenient access to the
 executing Client's canonical Window; it has no additional authority.
 
 A Client may uninstall only its own Program. The operation is an async
@@ -186,9 +186,9 @@ two independent operations and can expose an intermediate state remotely.
 An `under` or `over` representation may request one local system-rendered Surface:
 
 ```ts
-await current.window.local.surface.set({ duration: 240, easing: "ease-out", wait: true })
+await context.window.local.surface.set({ duration: 240, easing: "ease-out", wait: true })
 
-await current.window.local.surface.remove({ duration: 180, easing: "ease-in" })
+await context.window.local.surface.remove({ duration: 180, easing: "ease-in" })
 ```
 
 The desktop holds local state only for the lifetime of that iframe

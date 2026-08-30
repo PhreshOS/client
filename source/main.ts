@@ -1,7 +1,7 @@
 export { system, type System } from "./system.js"
 export { type SystemPointer, type PointerEvents, type PointerPosition } from "./pointer.js"
 export { type DesktopEvents, type DesktopSize, type SystemDesktop } from "./desktop.js"
-export { current, type Current, type CurrentServer } from "./current.js"
+export { context, type Context, type ContextServer } from "./context.js"
 export { type Channel, type ChannelCapture, type ChannelEvents, type ChannelMessage } from "./channel.js"
 export {
   ClientService,
