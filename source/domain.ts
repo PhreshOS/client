@@ -94,7 +94,7 @@ export interface EndpointReference {
 export type WindowRecord = WindowState
 
 /** Program handle visible inside a structurally isolated Client. */
-export type Program<Events extends object = {}> = Omit<CoreProgram<Events>, "process"> & {
+export type Program = Omit<CoreProgram, "process"> & {
   /** Effective permission decisions owned by this Program. */
   readonly permission: Permission
 
@@ -124,7 +124,7 @@ export type ProgramProcess = Omit<CoreProgramProcess, "list" | "first" | "last" 
 }
 
 /** Process handle visible inside a structurally isolated Client. */
-export type Process<Events extends object = {}> = Omit<CoreProcess<Events>, "server" | "client" | "program" | "parent"> & {
+export type Process = Omit<CoreProcess, "server" | "client" | "program" | "parent"> & {
   /** Permanent handle to this Process's Server. */
   readonly server: Server
 
@@ -677,28 +677,19 @@ function unscoped(subject: string | null, values: unknown[]) {
 }
 
 function programProcessEvent(event: string, values: unknown[]): unknown {
-  if (event === "endpointStart" || event === "endpointStop") return lifecycleEndpoint(values[0], values[1])
   if (event === "create") return process(values[0] as ProcessRecord)
   if (event === "exit") return { process: process(values[0] as ProcessRecord), ...exit(values[1], values[2]) }
   return undefined
 }
 
 function programEvent(event: string, values: unknown[]): unknown {
-  if (event === "uninstall") return { everythingRemoved: values[0] === true }
+  if (event === "uninstall") return values[0] === true
   return undefined
 }
 
 function processEvent(event: string, values: unknown[]): unknown {
-  if (event === "endpointStart" || event === "endpointStop") return lifecycleEndpoint(values[0], values[1])
   if (event === "exit") return exit(values[0], values[1])
   return undefined
-}
-
-function lifecycleEndpoint(record: unknown, kind: unknown) {
-  const owner = process(record as ProcessRecord)
-  if (kind === "server") return owner.server
-  if (kind === "client") return owner.client
-  throw new Error("The system returned an invalid Endpoint lifecycle event")
 }
 
 export function exit(code: unknown, signal: unknown): Exit {
