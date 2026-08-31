@@ -11,7 +11,7 @@ const source = `import type { System } from "./source/system.js"
 
 declare const system: System
 
-system.service({ program: "counter", endpoint: "", name: "state" })
+system.service({ program: "counter", process: "main", endpoint: "" })
 `
 const position = source.indexOf(marker) + "endpoint: \"".length
 const languageHost = {

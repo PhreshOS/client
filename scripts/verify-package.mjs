@@ -91,11 +91,9 @@ assert.equal(typeof context.name, "function")
 assert.equal(typeof context.window, "object")
 assert.equal(typeof context.window.local, "object")
 assert.equal("localWindow" in context, false)
-assert.equal(typeof context.enableService, "function")
-assert.equal(typeof context.disableService, "function")
+assert.equal(typeof context.isService, "function")
 assert.equal("channel" in context, false)
-assert.equal("enableService" in context.server, false)
-assert.equal("disableService" in context.server, false)
+assert.equal(typeof context.server.isService, "function")
 assert.equal(typeof system.desktopPreferences.snapshot, "function")
 assert.equal(typeof system.desktopPreferences.update, "function")
 assert.equal(typeof system.appearance.snapshot, "function")
@@ -113,18 +111,23 @@ assert.equal("subscribe" in context.window.local, false)
 assert.equal(typeof context.permission.granted, "function")
 assert.equal(typeof context.permission.request, "function")
 assert.equal("permission" in system, false)
-const service = system.service({ program: "counter", endpoint: "server", name: "state" })
-const clientService = system.service({ program: "counter", endpoint: "client", name: "state" })
-assert.equal(service, system.service({ program: "counter", endpoint: "server", name: "state" }))
-assert.equal(clientService, system.service({ program: "counter", endpoint: "client", name: "state" }))
+const service = system.service({ program: "counter", process: "main", endpoint: "server" })
+const clientService = system.service({ program: "counter", process: "main", endpoint: "client" })
+const exactService = system.service({ process: "1f4b222c-25d7-4ba8-85e5-d5e59cfe0928", endpoint: "server" })
+assert.equal(service, system.service({ program: "counter", process: "main", endpoint: "server" }))
+assert.equal(clientService, system.service({ program: "counter", process: "main", endpoint: "client" }))
+assert.equal(exactService, system.service({ process: "1f4b222c-25d7-4ba8-85e5-d5e59cfe0928", endpoint: "server" }))
+assert.throws(() => system.service({ process: "main", endpoint: "server" }), /complete service key/)
 assert(service instanceof Service)
 assert(service instanceof ServerService)
 assert(clientService instanceof Service)
 assert(clientService instanceof ClientService)
 assert.equal("program" in service, false)
 assert.equal("endpoint" in service, false)
-assert.equal(typeof service.enabled, "function")
+assert.equal(typeof service.exists, "function")
 assert.equal(typeof service.waitReady, "function")
+assert.equal(typeof clientService.waitReady, "undefined")
+assert.equal(typeof clientService.publish, "function")
 assert.equal(typeof service.subscribe, "function")
 assert.equal(typeof service.lifecycle.subscribe, "function")
 assert.equal("channel" in service, false)
@@ -153,13 +156,14 @@ const preferences: Promise<DesktopPreferences> = system.desktopPreferences.snaps
 const updatePreferences: Promise<void> = system.desktopPreferences.update({ theme: "default", animations: false })
 const systemDesktop: SystemDesktop = system.desktop
 const desktopSize: Promise<DesktopSize> = system.desktop.size()
-const counter: ServerService<CounterEvents> = system.service<CounterEvents>({ program: "counter", endpoint: "server", name: "state" })
-const clientCounter: ClientService<CounterEvents> = system.service<CounterEvents>({ program: "counter", endpoint: "client", name: "state" })
-const inferredClientCounter: ClientService = system.service({ program: "counter", endpoint: "client", name: "state" })
+const counter: ServerService<CounterEvents> = system.service<CounterEvents>({ program: "counter", process: "main", endpoint: "server" })
+const clientCounter: ClientService<CounterEvents> = system.service<CounterEvents>({ program: "counter", process: "main", endpoint: "client" })
+const inferredClientCounter: ClientService = system.service({ program: "counter", process: "main", endpoint: "client" })
+const exactCounter: ServerService = system.service({ process: "1f4b222c-25d7-4ba8-85e5-d5e59cfe0928", endpoint: "server" })
 const counterStop = counter.subscribe("change", value => void value)
-const counterLifecycleStop = counter.lifecycle.subscribe("enable", () => undefined)
+const counterLifecycleStop = counter.lifecycle.subscribe("start", () => undefined)
 const counterAnswer: Promise<number> = counter.ask<number>("value")
-const expose: Promise<void> = context.enableService("state")
+const serviceRole: Promise<boolean> = context.isService()
 const processName: Promise<string | null> = context.name()
 const program = await context.program()
 const hasAgent: boolean = program.hasAgent
@@ -183,6 +187,7 @@ void context.process().then(process => {
     void client.start({ title: "Prepared title" })
     void client.window.local.position()
   }
+  void process.server.start({ service: true })
   void client
 })
 void context.program().then(program => {
@@ -190,7 +195,7 @@ void context.program().then(program => {
   void samePermission.granted("pointer")
   const shared: Promise<import("@phreshos/client").Process> = program.process.findOrCreate({
     name: "shared-server",
-    server: true,
+    server: { service: true },
     client: false
   })
   void shared
@@ -206,10 +211,11 @@ void desktopSize
 void counter
 void clientCounter
 void inferredClientCounter
+void exactCounter
 void counterStop
 void counterLifecycleStop
 void counterAnswer
-void expose
+void serviceRole
 void processName
 void hasAgent
 void agent

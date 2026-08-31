@@ -3,34 +3,53 @@ import {
   ServerService as CoreServerService,
   isServiceKey,
   type ClientService,
+  type EndpointLifecycle,
   type ServerService,
   type Service,
-  type ServiceKey,
-  type ServiceLifecycle
+  type ServiceKey
 } from "@phreshos/core"
 import Deadline from "./deadline.js"
 import Events from "./events.js"
 import HandleRegistry from "./handle-registry.js"
-import type { HandleAddress } from "./domain.js"
 import wire from "./wire.js"
 
 const handles = new HandleRegistry()
 const ServerServiceBase = CoreServerService as unknown as new () => object
 const ClientServiceBase = CoreClientService as unknown as new () => object
 
-class ServerHandler extends ServerServiceBase {
-  public readonly name: string
-  public readonly lifecycle: ServiceLifecycle
+class ServiceHandle {
+  public readonly lifecycle: EndpointLifecycle
 
-  public constructor(private readonly key: ServiceKey & { endpoint: "server" }) {
-    super()
-    this.name = key.name
-    this.lifecycle = new Events(...serviceEvents(key, "lifecycle")) as unknown as ServiceLifecycle
-    bindEvents(this, new Events(...serviceEvents(key, "events")))
+  public constructor(protected readonly key: ServiceKey) {
+    this.lifecycle = new Events(...serviceEvents(key, "lifecycle")) as unknown as EndpointLifecycle
   }
 
   public publish(event: string, payload: unknown = undefined) {
     wire.send("end-host", "service-send", this.key, event, payload)
+  }
+
+  public async exists() {
+    const answer = await wire.request(["service-exists", this.key]) as [boolean]
+    return answer[0]
+  }
+}
+
+class ServerHandler extends ServerServiceBase {
+  public readonly lifecycle: EndpointLifecycle
+  private readonly service: ServiceHandle
+
+  public constructor(private readonly key: ServiceKey & { endpoint: "server" }) {
+    super()
+    this.service = new ServiceHandle(key)
+    this.lifecycle = this.service.lifecycle
+    bindEvents(this, new Events(...serviceEvents(key, "events")))
+  }
+
+  public publish(event: string, payload: unknown = undefined) { this.service.publish(event, payload) }
+  public exists() { return this.service.exists() }
+
+  public async waitReady(timeout?: number) {
+    await wire.request(["service-wait-ready", this.key, timeout], timeout)
   }
 
   public async ask<Answer = unknown>(event: string, payload: unknown = undefined) {
@@ -38,20 +57,9 @@ class ServerHandler extends ServerServiceBase {
   }
 
   public timeout(milliseconds: number) {
-    return {
-      ask: <Answer = unknown>(event: string, payload: unknown = undefined) => {
-        return this.askWithin<Answer>(new Deadline(milliseconds), event, payload)
-      }
-    }
-  }
-
-  public async enabled() {
-    const answer = await wire.request(["service-enabled", this.key]) as [boolean]
-    return answer[0]
-  }
-
-  public async waitReady(timeout?: number) {
-    await wire.request(["service-wait-ready", this.key, timeout], timeout)
+    return { ask: <Answer = unknown>(event: string, payload: unknown = undefined) => (
+      this.askWithin<Answer>(new Deadline(milliseconds), event, payload)
+    ) }
   }
 
   private async askWithin<Answer>(deadline: Deadline, event: string, payload: unknown) {
@@ -68,24 +76,18 @@ class ServerHandler extends ServerServiceBase {
 }
 
 class ClientHandler extends ClientServiceBase {
-  public readonly name: string
-  public readonly lifecycle: ServiceLifecycle
+  public readonly lifecycle: EndpointLifecycle
+  private readonly service: ServiceHandle
 
-  public constructor(private readonly key: ServiceKey & { endpoint: "client" }) {
+  public constructor(key: ServiceKey & { endpoint: "client" }) {
     super()
-    this.name = key.name
-    this.lifecycle = new Events(...serviceEvents(key, "lifecycle")) as unknown as ServiceLifecycle
+    this.service = new ServiceHandle(key)
+    this.lifecycle = this.service.lifecycle
     bindEvents(this, new Events(...serviceEvents(key, "events")))
   }
 
-  public async enabled() {
-    const answer = await wire.request(["service-enabled", this.key]) as [boolean]
-    return answer[0]
-  }
-
-  public async waitReady(timeout?: number) {
-    await wire.request(["service-wait-ready", this.key, timeout], timeout)
-  }
+  public publish(event: string, payload: unknown = undefined) { this.service.publish(event, payload) }
+  public exists() { return this.service.exists() }
 }
 
 export function prepareService<EventsMap extends object = {}>(key: ServiceKey & { endpoint: "server" }): ServerService<EventsMap>
@@ -94,33 +96,16 @@ export function prepareService(key: ServiceKey): Service
 export function prepareService(key: ServiceKey): Service {
   if (!isServiceKey(key)) throw new Error("A complete service key is required")
 
-  const normalized = Object.freeze({ program: key.program, endpoint: key.endpoint, name: key.name })
-  const identity = JSON.stringify([normalized.program, normalized.endpoint, normalized.name])
+  const normalized = Object.freeze({
+    ...(key.program === undefined ? {} : { program: key.program }),
+    process: key.process,
+    endpoint: key.endpoint
+  })
+  const identity = JSON.stringify([key.program ?? null, key.process, key.endpoint])
 
-  return handles.obtain(`service:${identity}`, () => {
-    return normalized.endpoint === "server"
-      ? new ServerHandler(normalized as ServiceKey & { endpoint: "server" })
-      : new ClientHandler(normalized as ServiceKey & { endpoint: "client" })
-  }) as unknown as Service
-}
-
-export async function enableCurrentService(name: string) {
-  await wire.request(["enable-service", name])
-}
-
-export async function disableCurrentService() {
-  await wire.request(["disable-service"])
-}
-
-export async function endpointService<EventsMap extends object = {}>(target: HandleAddress | null, endpoint: "server"):
-Promise<ServerService<EventsMap> | null>
-export async function endpointService<EventsMap extends object = {}>(target: HandleAddress | null, endpoint: "client"):
-Promise<ClientService<EventsMap> | null>
-export async function endpointService(target: HandleAddress | null, endpoint: "server" | "client"):
-Promise<Service | null>
-export async function endpointService(target: HandleAddress | null, endpoint: "server" | "client") {
-  const answer = await wire.request(["endpoint-service", target, endpoint]) as [ServiceKey | null]
-  return answer[0] ? prepareService(answer[0]) : null
+  return handles.obtain(`service:${identity}`, () => normalized.endpoint === "server"
+    ? new ServerHandler(normalized as ServiceKey & { endpoint: "server" })
+    : new ClientHandler(normalized as ServiceKey & { endpoint: "client" })) as unknown as Service
 }
 
 function serviceEvents(key: ServiceKey, scope: "lifecycle" | "events") {

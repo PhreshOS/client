@@ -19,7 +19,8 @@ import {
   type Exit,
   type EventOptions,
   type Launch,
-  type LaunchClient,
+  type ClientLaunch,
+  type ServerLaunch,
   type LocalWindow,
   type Outcome,
   type Permission,
@@ -43,7 +44,6 @@ import Deadline from "./deadline.js"
 import HandleRegistry from "./handle-registry.js"
 import { area, sql, store } from "./storage.js"
 import wire from "./wire.js"
-import { endpointService } from "./service.js"
 import { currentProgramPermission } from "./permissions.js"
 
 export interface HandleAddress {
@@ -53,6 +53,7 @@ export interface HandleAddress {
 
 export interface EndpointDeclarationRecord {
   start: boolean
+  service: boolean
 }
 
 export interface ClientDeclarationRecord extends EndpointDeclarationRecord {
@@ -82,9 +83,11 @@ export interface ProcessRecord {
   program: ProgramRecord
   options: Record<string, string>
   startedAt: string | Date
-  server: Record<string, never> | null
-  client: Record<string, never> | null
+  server: EndpointRecord | null
+  client: EndpointRecord | null
 }
+
+export interface EndpointRecord { service: boolean }
 
 export interface EndpointReference {
   kind: "server" | "client"
@@ -289,7 +292,8 @@ function programCommandChunk(value: unknown): ProgramCommandChunk {
 
 function declaration(record: EndpointDeclarationRecord): EndpointDeclaration {
   return Object.freeze({
-    start: record.start
+    start: record.start,
+    service: record.service
   })
 }
 
@@ -455,9 +459,9 @@ class ServerHandle extends ServerBase {
     return answer[0]
   }
 
-  public async start() { await wire.request(["start-endpoint", this.owner.address, "server"]) }
+  public async start(launch: ServerLaunch = {}) { await wire.request(["start-endpoint", this.owner.address, "server", launch]) }
   public async stop() { await wire.request(["stop-endpoint", this.owner.address, "server"]) }
-  public service<ServiceEvents extends object = {}>() { return endpointService<ServiceEvents>(this.owner.address, "server") }
+  public async isService() { return (await wire.request(["is-service", "server", this.owner.address]) as [boolean])[0] }
   public async waitReady(timeout?: number) { await wire.request(["wait-ready", this.owner.address], timeout) }
 
   public async ask<Answer = unknown>(event: string, payload: unknown = undefined) {
@@ -503,9 +507,9 @@ class ClientHandle extends ClientBase {
     return answer[0]
   }
 
-  public async start(overrides: LaunchClient = {}) { await wire.request(["start-endpoint", this.owner.address, "client", overrides]) }
+  public async start(launch: ClientLaunch = {}) { await wire.request(["start-endpoint", this.owner.address, "client", launch]) }
   public async stop() { await wire.request(["stop-endpoint", this.owner.address, "client"]) }
-  public service<ServiceEvents extends object = {}>() { return endpointService<ServiceEvents>(this.owner.address, "client") }
+  public async isService() { return (await wire.request(["is-service", "client", this.owner.address]) as [boolean])[0] }
 
 }
 

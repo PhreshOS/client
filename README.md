@@ -75,16 +75,21 @@ does not read or start the Service and exposes no Service registry:
 ```ts
 const service = system.service({
   program: "counter",
-  endpoint: "server",
-  name: "state"
+  process: "main",
+  endpoint: "server"
 })
 
 await service.waitReady()
-if (await service.enabled()) await service.ask("value")
+if (await service.exists()) await service.ask("value")
 
 service.subscribe("changed", message => console.log(message))
-service.lifecycle.subscribe("disable", () => console.log("unavailable"))
+service.lifecycle.subscribe("stop", () => console.log("unavailable"))
 ```
+
+The `program` coordinate is required for a Program-local Process name. When
+`process` is an exact globally unique identity, use
+`system.service({ process, endpoint })`; that handle never retargets a
+replacement Process.
 
 A Client may traverse `Process.parent()` through any number of ancestors in
 its own Program. The first parent outside that Program is structurally hidden

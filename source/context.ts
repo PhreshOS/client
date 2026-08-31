@@ -4,7 +4,8 @@ import type {
   ContextEvents as CoreContextEvents,
   ContextMessage as CoreContextMessage,
   EndpointLifecycle,
-  LaunchClient
+  ClientLaunch,
+  ServerLaunch
 } from "@phreshos/core"
 import Deadline from "./deadline.js"
 import {
@@ -31,7 +32,6 @@ import {
 } from "./domain.js"
 import Events from "./events.js"
 import wire from "./wire.js"
-import { disableCurrentService, enableCurrentService, endpointService } from "./service.js"
 import { currentProgramPermission } from "./permissions.js"
 
 /** The executing Process's canonical Server handle. */
@@ -48,7 +48,7 @@ export type ContextCapture<Events extends object = {}> = CoreContextCapture<Even
 
 /** Client runtime context: inbound communication, owner hierarchy, and paired Server. */
 export interface Context<Events extends object = {}>
-  extends CoreContext<Events, Endpoint | null>, Pick<Client, "service"> {
+  extends CoreContext<Events, Endpoint | null> {
   /** The same Server handle exposed by the executing Process. */
   readonly server: ContextServer
 
@@ -97,9 +97,9 @@ class ContextServerHandle extends ServerBase {
     return answer[0]
   }
 
-  public async start() { await wire.request(["start-endpoint", undefined, "server"]) }
+  public async start(launch: ServerLaunch = {}) { await wire.request(["start-endpoint", undefined, "server", launch]) }
   public async stop() { await wire.request(["stop-endpoint", undefined, "server"]) }
-  public service<ServiceEvents extends object = {}>() { return endpointService<ServiceEvents>(null, "server") }
+  public async isService() { return (await wire.request(["is-service", "server"]) as [boolean])[0] }
   public async waitReady(timeout?: number) { await wire.request(["wait-ready"], timeout) }
 
   public async ask<Answer = unknown>(event: string, payload: unknown = undefined) {
@@ -162,9 +162,9 @@ class ContextClientHandle extends ClientBase {
     return answer[0]
   }
 
-  public async start(overrides: LaunchClient = {}) { await wire.request(["start-endpoint", undefined, "client", overrides]) }
+  public async start(launch: ClientLaunch = {}) { await wire.request(["start-endpoint", undefined, "client", launch]) }
   public async stop() { await wire.request(["stop-endpoint", undefined, "client"]) }
-  public service<ServiceEvents extends object = {}>() { return endpointService<ServiceEvents>(null, "client") }
+  public async isService() { return (await wire.request(["is-service", "client"]) as [boolean])[0] }
 }
 
 contextClient = new ContextClientHandle(owner) as unknown as Client
@@ -203,10 +203,8 @@ class ClientContext extends Events {
   }
 
   public async stop() { await wire.request(["stop-current"]) }
-  public service<ServiceEvents extends object = {}>() { return endpointService<ServiceEvents>(null, "client") }
+  public async isService() { return contextClient.isService() }
   public publish(event: string, payload: unknown = undefined) { wire.send("end-host", "emit", event, payload) }
-  public async enableService(name: string) { await enableCurrentService(name) }
-  public async disableService() { await disableCurrentService() }
 }
 
 async function currentAddress() {
