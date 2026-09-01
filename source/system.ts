@@ -1,16 +1,13 @@
 import type {
   AppearanceSource,
   ClientService,
-  SystemDesktopPreferences,
   ServerService,
   ServiceKey,
   SystemUploads
 } from "@phreshos/core"
 import ClientAppearance from "./appearance.js"
-import ClientDesktopPreferences from "./desktop-preferences.js"
 import wire from "./wire.js"
-import ClientPointer, { type SystemPointer } from "./pointer.js"
-import ClientDesktop, { type SystemDesktop } from "./desktop.js"
+import ClientDesktop, { type SystemDesktop } from "./desktop/desktop.js"
 import { prepareService } from "./service.js"
 import { uploads } from "./uploads.js"
 import controlledStream from "./controlled-stream.js"
@@ -30,14 +27,8 @@ export interface System {
   /** Complete unresolved Appearance read from the System authority. */
   readonly appearance: AppearanceSource
 
-  /** Mutable effective preferences local to this Desktop. */
-  readonly desktopPreferences: SystemDesktopPreferences
-
-  /** Layer-independent desktop size reads and live updates. */
+  /** Capabilities owned by the Desktop containing this Client. */
   readonly desktop: SystemDesktop
-
-  /** Permission-guarded desktop pointer reads and live movement. */
-  readonly pointer: SystemPointer
 
   /** Flat System-owned public uploads capability. */
   readonly uploads: SystemUploads
@@ -59,9 +50,7 @@ export interface System {
 
 class ClientSystem {
   public readonly appearance = new ClientAppearance() as unknown as AppearanceSource
-  public readonly desktopPreferences = new ClientDesktopPreferences() as unknown as SystemDesktopPreferences
   public readonly desktop = new ClientDesktop() as unknown as SystemDesktop
-  public readonly pointer = new ClientPointer() as unknown as SystemPointer
   public readonly uploads = uploads
 
   public service<Endpoint extends ServiceEndpoint>(key: ServiceAddress<Endpoint>): ServiceHandle<Endpoint, {}>

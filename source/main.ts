@@ -1,6 +1,5 @@
 export { system, type System } from "./system.js"
-export { type SystemPointer, type PointerEvents, type PointerPosition } from "./pointer.js"
-export { type DesktopEvents, type DesktopSize, type SystemDesktop } from "./desktop.js"
+export { type SystemDesktop } from "./desktop/desktop.js"
 export {
   context,
   type Context,
@@ -92,8 +91,17 @@ export type {
   AnimationsPreference,
   DesktopPreferences,
   DesktopPreferencesEvents,
+  DesktopPreferencesSource,
   DesktopPreferencesUpdate,
-  SystemDesktopPreferences,
+  DesktopPointerEvents,
+  DesktopPointerPosition,
+  DesktopPointerSnapshot,
+  DesktopPointerSource,
+  DesktopSize,
+  DesktopSurfaceEvents,
+  DesktopSurfaceSnapshot,
+  DesktopSurfaceSource,
+  WritableDesktopPreferencesSource,
   ThemedValue,
   Theme,
   ThemePreference,

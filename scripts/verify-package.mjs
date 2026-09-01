@@ -94,16 +94,17 @@ assert.equal("localWindow" in context, false)
 assert.equal(typeof context.isService, "function")
 assert.equal("channel" in context, false)
 assert.equal(typeof context.server.isService, "function")
-assert.equal(typeof system.desktopPreferences.snapshot, "function")
-assert.equal(typeof system.desktopPreferences.update, "function")
+assert.equal(typeof system.desktop.preferences.snapshot, "function")
+assert.equal(typeof system.desktop.preferences.update, "function")
 assert.equal(typeof system.appearance.snapshot, "function")
 assert.equal(typeof system.uploads.write, "function")
 assert.equal(typeof system.uploads.stream, "function")
 assert.equal(typeof system.uploads.stat, "function")
 assert.equal("serve" in system, false)
-assert.equal(typeof system.desktop.size, "function")
-assert.equal("surface" in system, false)
-assert.equal(typeof system.pointer.position, "function")
+assert.equal(typeof system.desktop.surface.snapshot, "function")
+assert.equal(typeof system.desktop.pointer.snapshot, "function")
+assert.equal("desktopPreferences" in system, false)
+assert.equal("pointer" in system, false)
 assert.equal(typeof context.window.local.surface.set, "function")
 assert.equal(typeof context.window.local.surface.remove, "function")
 assert.equal("snapshot" in context.window.local.surface, false)
@@ -142,7 +143,7 @@ assert.equal(messages.length, 0)
 
   writeFileSync(
     join(consumer, "consumer.ts"),
-    `import { context, system, Client, Server, type Appearance, type ClientService, type DesktopPreferences, type DesktopSize, type SystemDesktop, type ServerService, type SystemUploads, type Upload } from "@phreshos/client"
+    `import { context, system, Client, Server, type Appearance, type ClientService, type DesktopPointerSnapshot, type DesktopPreferences, type DesktopSurfaceSnapshot, type SystemDesktop, type ServerService, type SystemUploads, type Upload } from "@phreshos/client"
 // @ts-expect-error the runtime object is named context
 import { current } from "@phreshos/client"
 
@@ -152,10 +153,11 @@ const appearance: Promise<Appearance> = system.appearance.snapshot()
 const uploads: SystemUploads = system.uploads
 const upload: Promise<Upload> = uploads.write("hello")
 const uploadText: Promise<string> = uploads.text("00000000-0000-0000-0000-000000000000.txt")
-const preferences: Promise<DesktopPreferences> = system.desktopPreferences.snapshot()
-const updatePreferences: Promise<void> = system.desktopPreferences.update({ theme: "default", animations: false })
+const preferences: Promise<DesktopPreferences> = system.desktop.preferences.snapshot()
+const updatePreferences: Promise<void> = system.desktop.preferences.update({ theme: "default", animations: false })
 const systemDesktop: SystemDesktop = system.desktop
-const desktopSize: Promise<DesktopSize> = system.desktop.size()
+const desktopSurface: Promise<DesktopSurfaceSnapshot> = system.desktop.surface.snapshot()
+const desktopPointer: Promise<DesktopPointerSnapshot> = system.desktop.pointer.snapshot()
 const counter: ServerService<CounterEvents> = system.service<CounterEvents>({ program: "counter", process: "main", endpoint: "server" })
 const clientCounter: ClientService<CounterEvents> = system.service<CounterEvents>({ program: "counter", process: "main", endpoint: "client" })
 const inferredClientCounter: ClientService = system.service({ program: "counter", process: "main", endpoint: "client" })
@@ -165,11 +167,13 @@ const counterLifecycleStop = counter.lifecycle.subscribe("start", () => undefine
 const counterAnswer: Promise<number> = counter.ask<number>("value")
 const serviceRole: Promise<boolean> = context.isService()
 const processName: Promise<string | null> = context.name()
+const currentProcess = await context.process()
+const sharedProcess: import("@phreshos/core").Process = currentProcess
 const program = await context.program()
 const hasAgent: boolean = program.hasAgent
 const agent: Promise<string | null> = program.agent()
-const desktop = system.desktop.subscribe("resize", size => void size.width)
-const pointer = system.pointer.subscribe("move", position => void position.x)
+const desktop = system.desktop.surface.subscribe("resize", snapshot => void snapshot.size.width)
+const pointer = system.desktop.pointer.subscribe("move", snapshot => void snapshot.position?.x)
 const clientSurface: Promise<void> = context.window.local.surface.set({ easing: "ease-out", wait: true })
 const localGeometry: Promise<void> = context.window.local.setGeometry({
   position: { x: 20, y: 20 },
@@ -207,7 +211,8 @@ void updatePreferences
 void upload
 void uploadText
 void systemDesktop
-void desktopSize
+void desktopSurface
+void desktopPointer
 void counter
 void clientCounter
 void inferredClientCounter
@@ -217,6 +222,7 @@ void counterLifecycleStop
 void counterAnswer
 void serviceRole
 void processName
+void sharedProcess
 void hasAgent
 void agent
 void desktop

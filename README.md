@@ -18,10 +18,10 @@ a peer dependency. It does not redefine those objects, own server-side
 capabilities, or contain System and transport implementations.
 
 Its `System` contract exposes only desktop-session capabilities: read-only
-System Appearance, mutable preferences local to this Desktop, desktop and
-pointer state, flat public uploads, and unrestricted server-side Fetch.
+System Appearance, one responsibility-owned Desktop, flat public uploads, and
+unrestricted server-side Fetch.
 `system.appearance.snapshot()` reads complete unresolved authoritative state.
-`system.desktopPreferences.snapshot()` reads the complete effective
+`system.desktop.preferences.snapshot()` reads the complete effective
 `{ theme, animations }` state. Its updates may set either preference explicitly
 or use `"default"` to resume following the native environment. Both capabilities
 expose ordinary live-only `change` subscriptions with no initial replay. A
@@ -32,18 +32,20 @@ and Processes.
 value, then reads or describes it using exactly one opaque generated file key;
 it exposes no filesystem path, path segments, listing, deletion, or clearing.
 
-Desktop and pointer access are independent objects rather than events merged
-into System:
+Surface, pointer, and preferences are independent capabilities of one Desktop:
 
 ```ts
-const desktop = await system.desktop.size()
-const stopDesktop = system.desktop.subscribe("resize", next => undefined)
+const surface = await system.desktop.surface.snapshot()
+const stopSurface = system.desktop.surface.subscribe("resize", next => undefined)
 
-const position = await system.pointer.position()
-const stopPointer = system.pointer.subscribe("move", next => undefined)
+const pointer = await system.desktop.pointer.snapshot()
+const stopPointer = system.desktop.pointer.subscribe("move", next => undefined)
+
+const preferences = await system.desktop.preferences.snapshot()
+await system.desktop.preferences.update({ theme: "dark" })
 ```
 
-The desktop size is the complete desktop area containing this Client,
+`surface.size` is the complete desktop area containing this Client,
 independent of the Client Window's layer. Client code cannot select a layer,
 and the desktop's gutter never enters an endpoint. Pointer position and
 movement both require the `pointer` permission. Reads are asynchronous
