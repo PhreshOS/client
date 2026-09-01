@@ -100,7 +100,7 @@ class ContextServerHandle extends ServerBase {
   public async start(launch: ServerLaunch = {}) { await wire.request(["start-endpoint", undefined, "server", launch]) }
   public async stop() { await wire.request(["stop-endpoint", undefined, "server"]) }
   public async isService() { return (await wire.request(["is-service", "server"]) as [boolean])[0] }
-  public async waitReady(timeout?: number) { await wire.request(["wait-ready"], timeout) }
+  public async waitReady(timeout?: number) { await wire.request(["wait-ready", undefined, "server"], timeout) }
 
   public async ask<Answer = unknown>(event: string, payload: unknown = undefined) {
     return this.askWithin<Answer>(undefined, event, payload)
@@ -112,7 +112,7 @@ class ContextServerHandle extends ServerBase {
 
   private async askWithin<Answer>(timeout: number | undefined, event: string, payload: unknown) {
     const deadline = new Deadline(timeout)
-    await wire.requestWithin(["wait-ready", null, true], deadline)
+    await wire.requestWithin(["wait-ready", undefined, "server", true], deadline)
     return await wire.askServerWithin(event, payload, deadline) as Answer
   }
 }
@@ -165,6 +165,7 @@ class ContextClientHandle extends ClientBase {
   public async start(launch: ClientLaunch = {}) { await wire.request(["start-endpoint", undefined, "client", launch]) }
   public async stop() { await wire.request(["stop-endpoint", undefined, "client"]) }
   public async isService() { return (await wire.request(["is-service", "client"]) as [boolean])[0] }
+  public async waitReady(timeout?: number) { await wire.request(["wait-ready", undefined, "client"], timeout) }
 }
 
 contextClient = new ContextClientHandle(owner) as unknown as Client

@@ -32,6 +32,10 @@ class ServiceHandle {
     const answer = await wire.request(["service-exists", this.key]) as [boolean]
     return answer[0]
   }
+
+  public async waitReady(timeout?: number) {
+    await wire.request(["service-wait-ready", this.key, timeout], timeout)
+  }
 }
 
 class ServerHandler extends ServerServiceBase {
@@ -48,9 +52,7 @@ class ServerHandler extends ServerServiceBase {
   public publish(event: string, payload: unknown = undefined) { this.service.publish(event, payload) }
   public exists() { return this.service.exists() }
 
-  public async waitReady(timeout?: number) {
-    await wire.request(["service-wait-ready", this.key, timeout], timeout)
-  }
+  public waitReady(timeout?: number) { return this.service.waitReady(timeout) }
 
   public async ask<Answer = unknown>(event: string, payload: unknown = undefined) {
     return await this.askWithin<Answer>(new Deadline(), event, payload)
@@ -88,6 +90,7 @@ class ClientHandler extends ClientServiceBase {
 
   public publish(event: string, payload: unknown = undefined) { this.service.publish(event, payload) }
   public exists() { return this.service.exists() }
+  public waitReady(timeout?: number) { return this.service.waitReady(timeout) }
 }
 
 export function prepareService<EventsMap extends object = {}, Fallback = unknown>(key: ServiceKey & { endpoint: "server" }): ServerService<EventsMap, Fallback>
