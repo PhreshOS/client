@@ -90,8 +90,8 @@ class ClientHandler extends ClientServiceBase {
   public exists() { return this.service.exists() }
 }
 
-export function prepareService<EventsMap extends object = {}, Fallback = never>(key: ServiceKey & { endpoint: "server" }): ServerService<EventsMap, Fallback>
-export function prepareService<EventsMap extends object = {}, Fallback = never>(key: ServiceKey & { endpoint: "client" }): ClientService<EventsMap, Fallback>
+export function prepareService<EventsMap extends object = {}, Fallback = unknown>(key: ServiceKey & { endpoint: "server" }): ServerService<EventsMap, Fallback>
+export function prepareService<EventsMap extends object = {}, Fallback = unknown>(key: ServiceKey & { endpoint: "client" }): ClientService<EventsMap, Fallback>
 export function prepareService(key: ServiceKey): Service
 export function prepareService(key: ServiceKey): unknown {
   if (!isServiceKey(key)) throw new Error("A complete service key is required")
