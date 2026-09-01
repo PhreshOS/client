@@ -18,9 +18,9 @@ type ServiceAddress<Endpoint extends ServiceEndpoint> = Omit<ServiceKey, "endpoi
   endpoint: Endpoint
 }>
 
-type ServiceHandle<Endpoint extends ServiceEndpoint, Events extends object> = Endpoint extends "server"
-  ? ServerService<Events>
-  : ClientService<Events>
+type ServiceHandle<Endpoint extends ServiceEndpoint, Events extends object, Fallback = never> = Endpoint extends "server"
+  ? ServerService<Events, Fallback>
+  : ClientService<Events, Fallback>
 
 /** Desktop capabilities structurally available to a Client endpoint. */
 export interface System {
@@ -42,10 +42,10 @@ export interface System {
   ): ServiceHandle<Endpoint, {}>
 
   /** Returns a typed stable handle for one exact Server service identity. */
-  service<ServiceEvents extends object>(key: ServiceAddress<"server">): ServerService<ServiceEvents>
+  service<ServiceEvents extends object, Fallback = never>(key: ServiceAddress<"server">): ServerService<ServiceEvents, Fallback>
 
   /** Returns a typed stable handle for one exact Client service identity. */
-  service<ServiceEvents extends object>(key: ServiceAddress<"client">): ClientService<ServiceEvents>
+  service<ServiceEvents extends object, Fallback = never>(key: ServiceAddress<"client">): ClientService<ServiceEvents, Fallback>
 }
 
 class ClientSystem {
@@ -54,9 +54,9 @@ class ClientSystem {
   public readonly uploads = uploads
 
   public service<Endpoint extends ServiceEndpoint>(key: ServiceAddress<Endpoint>): ServiceHandle<Endpoint, {}>
-  public service<ServiceEvents extends object>(key: ServiceAddress<"server">): ServerService<ServiceEvents>
-  public service<ServiceEvents extends object>(key: ServiceAddress<"client">): ClientService<ServiceEvents>
-  public service(key: ServiceKey) { return prepareService(key) }
+  public service<ServiceEvents extends object, Fallback = never>(key: ServiceAddress<"server">): ServerService<ServiceEvents, Fallback>
+  public service<ServiceEvents extends object, Fallback = never>(key: ServiceAddress<"client">): ClientService<ServiceEvents, Fallback>
+  public service(key: ServiceKey): unknown { return prepareService(key) }
 
   public async fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
     const request = new Request(input, {
