@@ -35,7 +35,7 @@ import wire from "./wire.js"
 import { currentProgramPermission } from "./permissions.js"
 
 /** The executing Process's canonical Server handle. */
-export type ContextServer<Events extends object = {}> = Server<Events>
+export type ContextServer<Events extends object = {}, Fallback = never> = Server<Events, Fallback>
 
 /** One value addressed to the current Client, with a client-visible sender. */
 export type ContextMessage<Payload = unknown> = CoreContextMessage<Payload, Endpoint | null>

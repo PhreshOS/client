@@ -148,7 +148,7 @@ export type TrafficMessage<Payload = unknown> = CoreTrafficMessage<Payload, Endp
 export type TrafficEvents<Events extends object> = CoreTrafficEvents<Events, Endpoint | null>
 
 /** Every ordinary event observable in client-visible Endpoint traffic. */
-export type TrafficCapture<Events extends object = {}> = CoreTrafficCapture<Events, Endpoint | null>
+export type TrafficCapture<Events extends object = {}, Fallback = never> = CoreTrafficCapture<Events, Endpoint | null, Fallback>
 
 /** Question with a Server destination hidden when it crosses the Client boundary. */
 export type AskMessage<Payload = unknown> = CoreAskMessage<Payload, Server | null>
@@ -169,36 +169,36 @@ export type AnswerCapture<Result = unknown> = CoreAnswerCapture<Result, Endpoint
 export type AnswerSubscriber<Result = unknown> = CoreAnswerSubscriber<Result, Endpoint | null>
 
 /** Directed communication originating from one client-visible Endpoint. */
-export type EndpointTraffic<Events extends object = {}> = CoreEndpointTraffic<Events, Endpoint | null, Server | null>
+export type EndpointTraffic<Events extends object = {}, Fallback = never> = CoreEndpointTraffic<Events, Endpoint | null, Server | null, Fallback>
 
 /** Directed communication originating from one client-visible Server. */
-export type ServerTraffic<Events extends object = {}> = CoreServerTraffic<Events, Endpoint | null, Server | null>
+export type ServerTraffic<Events extends object = {}, Fallback = never> = CoreServerTraffic<Events, Endpoint | null, Server | null, Fallback>
 
 /** Directed communication originating from one client-visible Client. */
-export type ClientTraffic<Events extends object = {}> = CoreClientTraffic<Events, Endpoint | null, Server | null>
+export type ClientTraffic<Events extends object = {}, Fallback = never> = CoreClientTraffic<Events, Endpoint | null, Server | null, Fallback>
 
 /** Common Endpoint handle visible inside a structurally isolated Client. */
-export type Endpoint<Events extends object = {}> = Omit<CoreEndpoint<Events>, "process" | "traffic"> & {
+export type Endpoint<Events extends object = {}, Fallback = never> = Omit<CoreEndpoint<Events, Fallback>, "process" | "traffic"> & {
   /** Directed communication originating from this Endpoint. */
-  readonly traffic: EndpointTraffic<Events>
+  readonly traffic: EndpointTraffic<Events, Fallback>
 
   /** Returns the Process that owns this Endpoint. */
   process(): Promise<Process>
 }
 
 /** Server handle visible inside a structurally isolated Client. */
-export type Server<Events extends object = {}> = Omit<CoreServer<Events>, "process" | "traffic"> & Endpoint<Events> & {
+export type Server<Events extends object = {}, Fallback = never> = Omit<CoreServer<Events, Fallback>, "process" | "traffic"> & Endpoint<Events, Fallback> & {
   /** Directed communication originating from this Server. */
-  readonly traffic: ServerTraffic<Events>
+  readonly traffic: ServerTraffic<Events, Fallback>
 
   /** Returns the Process that owns this Server. */
   process(): Promise<Process>
 }
 
 /** Client handle visible inside a structurally isolated Client. */
-export type Client<Events extends object = {}> = Omit<CoreClient<Events>, "process" | "traffic" | "window"> & Endpoint<Events> & {
+export type Client<Events extends object = {}, Fallback = never> = Omit<CoreClient<Events, Fallback>, "process" | "traffic" | "window"> & Endpoint<Events, Fallback> & {
   /** Directed communication originating from this Client. */
-  readonly traffic: ClientTraffic<Events>
+  readonly traffic: ClientTraffic<Events, Fallback>
 
   /** Presentation capability permanently owned by this Client handle. */
   readonly window: Window
