@@ -1,6 +1,6 @@
 {
   "name": "@phreshos/client",
-  "version": "0.1.28",
+  "version": "0.1.29",
   "description": "The SDK used by a Program's client endpoint.",
   "type": "module",
   "main": "dist/main.js",
@@ -47,13 +47,13 @@
     "prepack": "node --run build"
   },
   "peerDependencies": {
-    "@phreshos/core": "^0.1.29"
+    "@phreshos/core": "^0.1.31"
   },
   "dependencies": {
     "@msgpack/msgpack": "^3.1.3"
   },
   "devDependencies": {
-    "@phreshos/core": "^0.1.29",
+    "@phreshos/core": "^0.1.31",
     "typescript": "^6.0.3"
   }
 }
