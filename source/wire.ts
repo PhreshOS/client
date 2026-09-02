@@ -323,15 +323,18 @@ class Wire {
     key: ServiceKey,
     scope: "lifecycle" | "events",
     event: string | null,
-    handler: Handler
+    handler: Handler,
+    impossible?: Failure
   ): Cleanup {
     const subscription = crypto.randomUUID()
     const stop = this.on("service-event", subscription, handler)
+    if (impossible) this.impossible.set(subscription, impossible)
 
-    this.send("end-host", "service-follow", subscription, key, scope, event)
+    this.send("end-host", "service-follow", subscription, key, scope, event, impossible !== undefined)
 
     return once(() => {
       stop()
+      this.impossible.delete(subscription)
       this.send("end-host", "service-unfollow", subscription)
     })
   }

@@ -113,10 +113,10 @@ export function prepareService(key: ServiceKey): unknown {
 
 function serviceEvents(key: ServiceKey, scope: "lifecycle" | "events") {
   return [
-    (event: string, listener: (message: unknown) => unknown) => wire.followService(key, scope, event, listener),
-    (listener: (event: string, message: unknown) => unknown) => wire.followService(key, scope, null, (event, payload) => {
+    (event: string, listener: (message: unknown) => unknown, impossible?: (error: Error) => void) => wire.followService(key, scope, event, listener, impossible),
+    (listener: (event: string, message: unknown) => unknown, impossible?: (error: Error) => void) => wire.followService(key, scope, null, (event, payload) => {
       if (typeof event === "string") listener(event, payload)
-    })
+    }, impossible)
   ] as const satisfies ConstructorParameters<typeof Events>
 }
 
