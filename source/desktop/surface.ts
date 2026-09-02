@@ -1,9 +1,9 @@
-import type { DesktopSurfaceSnapshot } from "@phreshos/core"
+import type { DesktopSurfaceEvents, DesktopSurfaceSnapshot, DesktopSurfaceSource } from "@phreshos/core"
 import Events from "../events.js"
 import wire from "../wire.js"
 
 /** Read-only access to the Desktop surface containing this Client. */
-export default class ClientSurface extends Events {
+export default class ClientSurface extends Events<DesktopSurfaceEvents, never> implements DesktopSurfaceSource {
   public constructor() {
     super(
       (event, listener, impossible) => wire.on("host-desktop-surface", event, value => {

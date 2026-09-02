@@ -1,16 +1,23 @@
 import type {
-  AppearanceSource,
   ClientService,
+  ProgramDefinition,
   ServerService,
   ServiceKey,
-  SystemUploads
+  System as CoreSystem,
+  SystemProcess as CoreSystemProcess,
+  SystemProcessEvents,
+  SystemProgram as CoreSystemProgram,
+  SystemProgramEvents,
+  WritableAppearance
 } from "@phreshos/core"
 import ClientAppearance from "./appearance.js"
 import wire from "./wire.js"
-import ClientDesktop, { type SystemDesktop } from "./desktop/desktop.js"
 import { prepareService } from "./service.js"
 import { uploads } from "./uploads.js"
 import controlledStream from "./controlled-stream.js"
+import Events from "./events.js"
+import { exit, process, program, type ProcessRecord, type ProgramRecord } from "./domain.js"
+import { systemStorage } from "./storage.js"
 
 type ServiceEndpoint = ServiceKey["endpoint"]
 
@@ -22,36 +29,17 @@ type ServiceHandle<Endpoint extends ServiceEndpoint, Events extends object, Fall
   ? ServerService<Events, Fallback>
   : ClientService<Events, Fallback>
 
-/** Desktop capabilities structurally available to a Client endpoint. */
-export interface System {
-  /** Complete unresolved Appearance read from the System authority. */
-  readonly appearance: AppearanceSource
-
-  /** Capabilities owned by the Desktop containing this Client. */
-  readonly desktop: SystemDesktop
-
-  /** Flat System-owned public uploads capability. */
-  readonly uploads: SystemUploads
-
-  /** Performs an unrestricted server-side fetch on behalf of this Client. */
-  fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>
-
-  /** Returns a precisely typed stable handle for either service endpoint. */
-  service<Endpoint extends ServiceEndpoint>(
-    key: ServiceAddress<Endpoint>
-  ): ServiceHandle<Endpoint, {}>
-
-  /** Returns a typed stable handle for one exact Server service identity. */
-  service<ServiceEvents extends object, Fallback = unknown>(key: ServiceAddress<"server">): ServerService<ServiceEvents, Fallback>
-
-  /** Returns a typed stable handle for one exact Client service identity. */
-  service<ServiceEvents extends object, Fallback = unknown>(key: ServiceAddress<"client">): ClientService<ServiceEvents, Fallback>
-}
-
-class ClientSystem {
-  public readonly appearance = new ClientAppearance() as unknown as AppearanceSource
-  public readonly desktop = new ClientDesktop() as unknown as SystemDesktop
+class ClientSystem implements CoreSystem {
+  public readonly storage = systemStorage()
+  public readonly appearance: WritableAppearance = new ClientAppearance()
+  public readonly program: CoreSystemProgram = new SystemProgramHandle()
+  public readonly process: CoreSystemProcess = new SystemProcessHandle()
   public readonly uploads = uploads
+
+  public async forceCreateProgram(source: ProgramDefinition | string) {
+    const answer = await wire.request(["host-program-force-create", source]) as [ProgramRecord]
+    return program(answer[0])
+  }
 
   public service<Endpoint extends ServiceEndpoint>(key: ServiceAddress<Endpoint>): ServiceHandle<Endpoint, {}>
   public service<ServiceEvents extends object, Fallback = unknown>(key: ServiceAddress<"server">): ServerService<ServiceEvents, Fallback>
@@ -128,6 +116,65 @@ class ClientSystem {
 
 }
 
+class SystemProgramHandle extends Events<SystemProgramEvents, never> implements CoreSystemProgram {
+  public constructor() {
+    super(
+      (event, listener, impossible) => wire.on("host-program", event, (...values) => listener(systemProgramEvent(event, values)), null, impossible),
+      observer => wire.onAll("host-program", (event, ...values) => {
+        if (typeof event === "string") observer(event, systemProgramEvent(event, values))
+      })
+    )
+  }
+
+  public async list(onlyInstalled = false) {
+    const answer = await wire.request(["host-program-list", onlyInstalled]) as [ProgramRecord[]]
+    return answer[0].map(program)
+  }
+
+  public async find(identity: string) {
+    const answer = await wire.request(["host-program-find", identity]) as [ProgramRecord | null]
+    return answer[0] ? program(answer[0]) : null
+  }
+
+  public async create(source: ProgramDefinition | string) {
+    const answer = await wire.request(["host-program-create", source]) as [ProgramRecord]
+    return program(answer[0])
+  }
+}
+
+class SystemProcessHandle extends Events<SystemProcessEvents, never> implements CoreSystemProcess {
+  public constructor() {
+    super(
+      (event, listener, impossible) => wire.on("host-process", event, (...values) => listener(systemProcessEvent(event, values)), null, impossible),
+      observer => wire.onAll("host-process", (event, ...values) => {
+        if (typeof event === "string") observer(event, systemProcessEvent(event, values))
+      })
+    )
+  }
+
+  public async list() {
+    const answer = await wire.request(["host-process-list"]) as [ProcessRecord[]]
+    return answer[0].map(record => process(record))
+  }
+
+  public async find(identity: string) {
+    const answer = await wire.request(["host-process-find", identity]) as [ProcessRecord | null]
+    return answer[0] ? process(answer[0]) : null
+  }
+}
+
+function systemProcessEvent(event: string, values: unknown[]): unknown {
+  if (event === "create") return process(values[1] as ProcessRecord)
+  if (event === "exit") return { process: process(values[1] as ProcessRecord), ...exit(values[2], values[3]) }
+  return values[0]
+}
+
+function systemProgramEvent(event: string, values: unknown[]): unknown {
+  if (event === "create" || event === "forget" || event === "install") return program(values[1] as ProgramRecord)
+  if (event === "uninstall") return { program: program(values[1] as ProgramRecord), everything: values[2] === true }
+  return values[0]
+}
+
 interface ProxyRequest {
   body: boolean
   cache: RequestCache
@@ -171,5 +218,5 @@ function closeControl(signal: AbortSignal, port: MessagePort, abort: () => void)
   port.close()
 }
 
-/** Desktop capabilities available to this Client. */
-export const system: System = new ClientSystem()
+/** The global System represented through this Client runtime. */
+export const system: CoreSystem = new ClientSystem()

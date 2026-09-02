@@ -1,30 +1,51 @@
-import type { Permission, PermissionDecision, PermissionName, TimedPermission } from "@phreshos/core"
+import type {
+  ContextPermissions,
+  PermissionInput,
+  PermissionRequest,
+  ProgramPermissions,
+  TimedContextPermissions
+} from "@phreshos/core"
+import { parsePermission, parsePermissionChange, parsePermissions } from "@phreshos/core"
+import type { HandleAddress } from "./domain.js"
 import wire from "./wire.js"
 
-const defaultPermissionTimeout = 30_000
+export const defaultPermissionTimeout = 120_000
 
-/** Client access to the current Program's effective permission decisions. */
-export default class ClientPermission implements Permission {
-  public async granted(name: PermissionName): Promise<PermissionDecision> {
-    const answer = await wire.request(["permission-granted", name]) as [PermissionDecision]
-    return answer[0]
-  }
+/** Bind authoritative stored grants to one exact Program handle. */
+export function programPermissions(program: HandleAddress): ProgramPermissions {
+  const operate = (operation: "all" | "get" | "set" | "delete", name?: string, permission?: Exclude<PermissionInput, null>) => (
+    wire.request(["program-permissions", program, operation, name, permission])
+  )
 
-  public request(name: PermissionName): Promise<PermissionDecision> {
-    return this.requestWithin(name, defaultPermissionTimeout)
-  }
-
-  public timeout(milliseconds: number): TimedPermission {
-    if (!Number.isFinite(milliseconds) || milliseconds < 0) throw new Error("A permission timeout must be a non-negative finite number")
-
-    return Object.freeze({ request: (name: PermissionName) => this.requestWithin(name, milliseconds) })
-  }
-
-  private async requestWithin(name: PermissionName, milliseconds: number): Promise<PermissionDecision> {
-    const answer = await wire.requestOrNull(["permission-request", name], milliseconds) as [PermissionDecision] | null
-    return answer?.[0] ?? null
+  return {
+    async get(name) { return parsePermission((await operate("get", name) as [unknown])[0]) },
+    async all() { return parsePermissions((await operate("all") as [unknown])[0]) },
+    async set(name, permission) { return parsePermissionChange((await operate("set", name, permission) as [unknown])[0]) },
+    async delete(name) { return parsePermissionChange((await operate("delete", name) as [unknown])[0]) }
   }
 }
 
-/** The one Program-owned permission capability visible in this isolated Client. */
-export const currentProgramPermission = new ClientPermission()
+/** Stored grants and owner requests belonging to the current Client. */
+export function contextPermissions(): ContextPermissions {
+  const timed = (timeout: number): TimedContextPermissions => ({
+    async request(name: string, permission: PermissionRequest = true) {
+      const identity = crypto.randomUUID()
+      const result = await wire.requestOrNull(["context-permission-request", identity, name, permission], timeout)
+
+      return result === null
+        ? Object.freeze({ permission: null, needReload: false })
+        : parsePermissionChange((result as [unknown])[0])
+    }
+  })
+
+  return {
+    async get(name) {
+      return parsePermission((await wire.request(["context-permission-get", name]) as [unknown])[0])
+    },
+    request: timed(defaultPermissionTimeout).request,
+    timeout(milliseconds) {
+      if (!Number.isFinite(milliseconds) || milliseconds < 0) throw new Error("A permission timeout must be a non-negative finite number")
+      return timed(milliseconds)
+    }
+  }
+}

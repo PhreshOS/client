@@ -22,15 +22,21 @@ import {
   type ClientLaunch,
   type ServerLaunch,
   type LocalWindow,
+  type LocalWindowOperations,
   type Outcome,
-  type Permission,
   type Position,
   type ProgramCommandChunk,
   type ProgramIconSize,
-  type ProgramProcess as CoreProgramProcess,
   type ServerTraffic as CoreServerTraffic,
   type Size,
-  type VisibilityTransition,
+  type SystemClientEntity,
+  type SystemEndpointEntity,
+  type SystemProcessEntity,
+  type SystemProcessRunEvent,
+  type SystemProcessRunOptions,
+  type SystemProgramEntity,
+  type SystemProgramProcess,
+  type SystemServerEntity,
   type TrafficMessage as CoreTrafficMessage,
   type TrafficCapture as CoreTrafficCapture,
   type TrafficEvents as CoreTrafficEvents,
@@ -42,9 +48,10 @@ import {
 import Events, { stream } from "./events.js"
 import Deadline from "./deadline.js"
 import HandleRegistry from "./handle-registry.js"
-import { area, sql, store } from "./storage.js"
+import { area, sql, store, type Storage } from "./storage.js"
+import startup from "./startup.js"
+import { programPermissions } from "./permissions.js"
 import wire from "./wire.js"
-import { currentProgramPermission } from "./permissions.js"
 
 export interface HandleAddress {
   identity: string
@@ -62,6 +69,7 @@ export interface ClientDeclarationRecord extends EndpointDeclarationRecord {
   position: Position | null
   layer: ClientDeclaration["layer"]
   minimize: boolean | null
+  permissions: ClientDeclaration["permissions"]
 }
 
 export interface ProgramRecord {
@@ -96,52 +104,13 @@ export interface EndpointReference {
 
 export type WindowRecord = WindowState
 
-/** Program handle visible inside a structurally isolated Client. */
-export type Program = Omit<CoreProgram, "process"> & {
-  /** Effective permission decisions owned by this Program. */
-  readonly permission: Permission
+export type Program = SystemProgramEntity
+export type ProgramProcess = SystemProgramProcess
+export type ProgramProcessRunEvent = SystemProcessRunEvent
+export type ProgramProcessRunOptions = SystemProcessRunOptions
+export type Process = SystemProcessEntity
 
-  /** Operations and lifecycle observation for this Program's Processes. */
-  readonly process: ProgramProcess
-}
-
-/** Client-visible Process operations scoped to one Program. */
-export type ProgramProcess = Omit<CoreProgramProcess, "list" | "first" | "last" | "find" | "create" | "findOrCreate"> & {
-  /** Returns every live Process of this Program visible to the current Client. */
-  list(): Promise<Process[]>
-
-  /** Returns the earliest-started visible live Process, or `null` when none exist. */
-  first(): Promise<Process | null>
-
-  /** Returns the latest-started visible live Process, or `null` when none exist. */
-  last(): Promise<Process | null>
-
-  /** Finds a visible live Process by runtime identity or Program-local name. */
-  find(identityOrName: string): Promise<Process | null>
-
-  /** Creates one Process of this same Program. */
-  create(launch?: Launch): Promise<Process>
-
-  /** Finds the named Process or atomically creates it with the same resolved launch. */
-  findOrCreate(launch: Launch & Readonly<{ name: string }>): Promise<Process>
-}
-
-/** Process handle visible inside a structurally isolated Client. */
-export type Process = Omit<CoreProcess, "server" | "client" | "program" | "parent"> & {
-  /** Permanent handle to this Process's Server. */
-  readonly server: Server
-
-  /** Permanent handle to this Process's Client. */
-  readonly client: Client
-
-  /** Returns the Program that owns this Process. */
-  program(): Program
-
-  /** Returns the visible parent Process, or `null` when no parent is accessible. */
-  parent(): Promise<Process | null>
-}
-
-/** Traffic value with identities hidden when they cross the Client boundary. */
+/** Traffic value resolved to the same global Endpoint handles as the System. */
 export type TrafficMessage<Payload = unknown> = CoreTrafficMessage<Payload, Endpoint | null>
 
 /** Applies client-visible destination metadata to known traffic events. */
@@ -150,7 +119,7 @@ export type TrafficEvents<Events extends object> = CoreTrafficEvents<Events, End
 /** Every ordinary event observable in client-visible Endpoint traffic. */
 export type TrafficCapture<Events extends object = {}, Fallback = unknown> = CoreTrafficCapture<Events, Endpoint | null, Fallback>
 
-/** Question with a Server destination hidden when it crosses the Client boundary. */
+/** Question carrying its globally resolved Server destination. */
 export type AskMessage<Payload = unknown> = CoreAskMessage<Payload, Server | null>
 
 /** One question observable in client-visible Endpoint traffic. */
@@ -159,7 +128,7 @@ export type AskCapture<Payload = unknown> = CoreAskCapture<Payload, Server | nul
 /** Callback that observes questions sent by a client-visible Endpoint. */
 export type AskSubscriber<Payload = unknown> = CoreAskSubscriber<Payload, Server | null>
 
-/** Answer with an Endpoint destination hidden when it crosses the Client boundary. */
+/** Answer carrying its globally resolved Endpoint destination. */
 export type AnswerMessage<Result = unknown> = CoreAnswerMessage<Result, Endpoint | null>
 
 /** One answer observable in client-visible Server traffic. */
@@ -177,41 +146,10 @@ export type ServerTraffic<Events extends object = {}, Fallback = unknown> = Core
 /** Directed communication originating from one client-visible Client. */
 export type ClientTraffic<Events extends object = {}, Fallback = unknown> = CoreClientTraffic<Events, Endpoint | null, Server | null, Fallback>
 
-/** Common Endpoint handle visible inside a structurally isolated Client. */
-export type Endpoint<Events extends object = {}, Fallback = unknown> = Omit<CoreEndpoint<Events, Fallback>, "process" | "traffic"> & {
-  /** Directed communication originating from this Endpoint. */
-  readonly traffic: EndpointTraffic<Events, Fallback>
-
-  /** Returns the Process that owns this Endpoint. */
-  process(): Promise<Process>
-}
-
-/** Server handle visible inside a structurally isolated Client. */
-export type Server<Events extends object = {}, Fallback = unknown> = Omit<CoreServer<Events, Fallback>, "process" | "traffic"> & Endpoint<Events, Fallback> & {
-  /** Directed communication originating from this Server. */
-  readonly traffic: ServerTraffic<Events, Fallback>
-
-  /** Returns the Process that owns this Server. */
-  process(): Promise<Process>
-}
-
-/** Client handle visible inside a structurally isolated Client. */
-export type Client<Events extends object = {}, Fallback = unknown> = Omit<CoreClient<Events, Fallback>, "process" | "traffic" | "window"> & Endpoint<Events, Fallback> & {
-  /** Directed communication originating from this Client. */
-  readonly traffic: ClientTraffic<Events, Fallback>
-
-  /** Presentation capability permanently owned by this Client handle. */
-  readonly window: Window
-
-  /** Returns the Process that owns this Client. */
-  process(): Promise<Process>
-}
-
-/** Authoritative Window state plus its representation on this desktop. */
-export type Window = CoreWindow & {
-  /** Physical representation of this Window on the current desktop. */
-  readonly local: LocalWindow
-}
+export type Endpoint<Events extends object = {}, Fallback = unknown> = SystemEndpointEntity<Events, Fallback>
+export type Server<Events extends object = {}, Fallback = unknown> = SystemServerEntity<Events, Fallback>
+export type Client<Events extends object = {}, Fallback = unknown> = SystemClientEntity<Events, Fallback>
+export type Window = CoreWindow
 
 const handles = new HandleRegistry()
 const ProgramBase = CoreProgram as unknown as new () => object
@@ -222,13 +160,14 @@ const ClientBase = CoreClient as unknown as new () => object
 class ProgramHandle extends ProgramBase {
   public readonly identity: string
   public readonly reference: string
-  public readonly data = area("data")
-  public readonly cache = area("cache")
-  public readonly store = store()
-  public readonly logs = sql("logs")
-  public readonly database = sql("database")
-  public readonly permission = currentProgramPermission
+  public readonly data: Storage
+  public readonly cache: Storage
+  public readonly store
+  public readonly logs
+  public readonly database
+  public readonly startup
   public readonly process: ProgramProcess
+  public readonly permissions
   private record: ProgramRecord
 
   public constructor(record: ProgramRecord) {
@@ -236,7 +175,14 @@ class ProgramHandle extends ProgramBase {
     this.identity = record.identity
     this.reference = record.reference
     this.record = record
-    this.process = new ProgramProcessHandle(record.reference) as unknown as ProgramProcess
+    this.data = area(this.address, "data")
+    this.cache = area(this.address, "cache")
+    this.store = store(this.address)
+    this.logs = sql("logs", this.address)
+    this.database = sql("database", this.address)
+    this.startup = startup(this.address)
+    this.permissions = programPermissions(this.address)
+    this.process = new ProgramProcessHandle(this.address, record.reference) as unknown as ProgramProcess
     bindEvents(this, scoped("program-host", record.reference, programEvent))
   }
 
@@ -250,6 +196,7 @@ class ProgramHandle extends ProgramBase {
   public get client() {
     return this.record.client ? clientDeclaration(this.record.client) : null
   }
+  public get address(): HandleAddress { return { identity: this.identity, reference: this.reference } }
 
   public update(record: ProgramRecord) {
     if (record.reference !== this.reference) throw new Error("A Program handle cannot become another Program")
@@ -257,27 +204,38 @@ class ProgramHandle extends ProgramBase {
   }
 
   public async icon(size: ProgramIconSize = "medium") {
-    const answer = await wire.request(["icon", size]) as [number[]]
+    const answer = await wire.request(["icon", this.address, size]) as [number[]]
     return new Blob([Uint8Array.from(answer[0])], { type: "image/png" })
   }
 
   public async agent() {
     if (!this.hasAgent) return null
-    const answer = await wire.request(["program-agent"]) as [string | null]
+    const answer = await wire.request(["program-agent", this.address]) as [string | null]
     return answer[0]
   }
 
   public async installed() {
-    const answer = await wire.request(["installed"]) as [boolean]
+    const answer = await wire.request(["installed", this.address]) as [boolean]
     return answer[0]
   }
 
-  public async *uninstall(everything = false) {
-    for await (const value of wire.stream(["uninstall", undefined, everything])) {
+  public async *install() {
+    for await (const value of wire.stream(["install", this.address])) {
       yield programCommandChunk(value)
     }
   }
-  public async forget() { await wire.request(["forget"]) }
+
+  public async fork(identity: string) {
+    const answer = await wire.request(["fork", this.address, identity]) as [ProgramRecord]
+    return program(answer[0])
+  }
+
+  public async *uninstall(everything = false) {
+    for await (const value of wire.stream(["uninstall", this.address, everything])) {
+      yield programCommandChunk(value)
+    }
+  }
+  public async forget() { await wire.request(["forget", this.address]) }
 }
 
 function programCommandChunk(value: unknown): ProgramCommandChunk {
@@ -304,17 +262,18 @@ function clientDeclaration(record: ClientDeclarationRecord): ClientDeclaration {
     size: record.size,
     position: record.position,
     layer: record.layer,
-    minimize: record.minimize
+    minimize: record.minimize,
+    permissions: Object.freeze(Object.fromEntries(Object.entries(record.permissions).map(([name, values]) => [name, Object.freeze([...values])])))
   })
 }
 
 class ProgramProcessHandle {
-  public constructor(program: string) {
-    bindEvents(this, scoped("program-process", program, programProcessEvent))
+  public constructor(private readonly address: HandleAddress, reference: string) {
+    bindEvents(this, scoped("program-process", reference, programProcessEvent))
   }
 
   public async list() {
-    const answer = await wire.request(["program-process-list"]) as [ProcessRecord[]]
+    const answer = await wire.request(["program-process-list", this.address]) as [ProcessRecord[]]
     return answer[0].map(record => process(record))
   }
 
@@ -327,24 +286,56 @@ class ProgramProcessHandle {
   }
 
   public async find(identityOrName: string) {
-    const answer = await wire.request(["program-process-find", identityOrName]) as [ProcessRecord | null]
+    const answer = await wire.request(["program-process-find", this.address, identityOrName]) as [ProcessRecord | null]
     return answer[0] ? process(answer[0]) : null
   }
 
   public async create(launch: Launch = {}) {
-    const answer = await wire.request(["program-process-create", launch]) as [ProcessRecord]
+    const answer = await wire.request(["program-process-create", this.address, launch]) as [ProcessRecord]
     return process(answer[0])
   }
 
+  public async *run(launch: Launch = {}, options: ProgramProcessRunOptions = {}) {
+    for await (const value of wire.stream(["run", this.address, launch], undefined, options.signal)) {
+      yield processRunEvent(value)
+    }
+  }
+
   public async findOrCreate(launch: Launch & Readonly<{ name: string }>) {
-    const answer = await wire.request(["program-process-find-or-create", launch]) as [ProcessRecord]
+    const answer = await wire.request(["program-process-find-or-create", this.address, launch]) as [ProcessRecord]
     return process(answer[0])
   }
 
   public async exitAll() {
-    const answer = await wire.request(["program-process-exit-all"]) as [string[]]
+    const answer = await wire.request(["program-process-exit-all", this.address]) as [string[]]
     return answer[0]
   }
+}
+
+function processRunEvent(value: unknown): ProgramProcessRunEvent {
+  const event = value as {
+    event?: unknown
+    process?: ProcessRecord
+    stream?: unknown
+    text?: unknown
+    exit?: { code?: unknown, signal?: unknown }
+  } | null
+
+  if (event?.event === "started" && event.process) {
+    return Object.freeze({ event: "started", process: process(event.process) })
+  }
+
+  if (event?.event === "output" && (event.stream === "stdout" || event.stream === "stderr") && typeof event.text === "string") {
+    return Object.freeze({ event: "output", stream: event.stream, text: event.text })
+  }
+
+  if (event?.event === "exited" && event.process) {
+    const code = typeof event.exit?.code === "number" ? event.exit.code : null
+    const signal = typeof event.exit?.signal === "string" ? event.exit.signal : null
+    return Object.freeze({ event: "exited", process: process(event.process), exit: exit(code, signal) })
+  }
+
+  throw new Error("The System returned an invalid Process run event")
 }
 
 function chronological(processes: Process[]) {
@@ -515,11 +506,8 @@ class ClientHandle extends ClientBase {
 }
 
 class WindowHandle extends Events {
-  public readonly local: LocalWindow
-
   public constructor(private readonly target: WindowTarget) {
     super(...deferredScoped("host-end", target, (_event, values) => values[0]))
-    this.local = new LocalWindowHandle(target)
   }
 
   private async state() {
@@ -543,41 +531,20 @@ class WindowHandle extends Events {
 }
 
 class LocalWindowHandle implements LocalWindow {
-  public readonly surface: LocalWindowSurfaceHandle
+  public constructor(private readonly target: WindowTarget, private readonly selected?: Transaction) {}
 
-  public constructor(private readonly target: WindowTarget) {
-    this.surface = new LocalWindowSurfaceHandle(target)
+  public transaction(transaction: Transaction): LocalWindowOperations {
+    return new LocalWindowHandle(this.target, transaction)
   }
 
-  private async state() {
-    const answer = await wire.request(["windowLocal", await this.target()]) as [WindowState]
-    return answer[0]
-  }
+  public async addSurface() { await this.change("windowLocalSurfaceAdd") }
+  public async removeSurface() { await this.change("windowLocalSurfaceRemove") }
+  public async move(position: Position) { await this.change("windowLocalMove", position) }
+  public async resize(size: Size) { await this.change("windowLocalResize", size) }
+  public async setGeometry(geometry: WindowGeometry) { await this.change("windowLocalGeometry", geometry) }
 
-  public async title() { return (await this.state()).title }
-  public async position() { return (await this.state()).position }
-  public async size() { return (await this.state()).size }
-  public async minimized() { return (await this.state()).minimized }
-  public async front() { return (await this.state()).front }
-  public async layer() { return (await this.state()).layer }
-  public async location() { return (await this.state()).location }
-  public async move(position: Position, transaction?: Transaction) { await wire.request(["windowLocalMove", await this.target(), position, transaction]) }
-  public async resize(size: Size, transaction?: Transaction) { await wire.request(["windowLocalResize", await this.target(), size, transaction]) }
-  public async setGeometry(geometry: WindowGeometry, transaction?: Transaction) { await wire.request(["windowLocalGeometry", await this.target(), geometry, transaction]) }
-  public async minimize(minimized = true) { await wire.request(["windowLocalMinimize", await this.target(), minimized]) }
-  public async changeTitle(title: string) { await wire.request(["windowLocalTitle", await this.target(), title]) }
-  public async raise() { await wire.request(["windowLocalRaise", await this.target()]) }
-}
-
-class LocalWindowSurfaceHandle {
-  public constructor(private readonly target: WindowTarget) {}
-
-  public async set(transition: VisibilityTransition) {
-    await wire.request(["windowLocalSurfaceSet", await this.target(), transition])
-  }
-
-  public async remove(transition: VisibilityTransition) {
-    await wire.request(["windowLocalSurfaceRemove", await this.target(), transition])
+  private async change(operation: string, value?: unknown) {
+    await wire.request([operation, await this.target(), value, this.selected])
   }
 }
 
@@ -748,7 +715,11 @@ export function window(target: WindowTarget): Window {
   return new WindowHandle(target) as unknown as Window
 }
 
-/** Resolves only endpoint identities intentionally visible to this Client. */
+export function localWindow(target: WindowTarget): LocalWindow {
+  return new LocalWindowHandle(target)
+}
+
+/** Resolves an Endpoint reference through the Client's global handle registry. */
 export function visibleEndpoint(reference: EndpointReference | null | undefined): Endpoint | null {
   if (reference === null) return null
   return endpoint(reference)

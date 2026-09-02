@@ -1,5 +1,5 @@
-export { system, type System } from "./system.js"
-export { type SystemDesktop } from "./desktop/desktop.js"
+export { system } from "./system.js"
+export { desktop } from "./desktop/desktop.js"
 export {
   context,
   type Context,
@@ -22,6 +22,8 @@ export {
   Server,
   type Window,
   type ProgramProcess,
+  type ProgramProcessRunEvent,
+  type ProgramProcessRunOptions,
   type AnswerCapture,
   type AnswerMessage,
   type AnswerSubscriber,
@@ -38,6 +40,7 @@ export {
 
 export type {
   Askable,
+  ClientContext,
   Capture,
   Captures,
   CaptureSubscriber,
@@ -64,8 +67,16 @@ export type {
   Message,
   OtherStat,
   Outcome,
-  PermissionDecision,
   Permission,
+  PermissionChange,
+  PermissionInput,
+  PermissionRequest,
+  Permissions,
+  ClientPermissionDeclarations,
+  ClientPermissions,
+  ContextPermissions,
+  ProgramPermissions,
+  TimedContextPermissions,
   Position,
   Storage,
   ProgramEvents,
@@ -75,6 +86,7 @@ export type {
   ProgramStore,
   ProcessEvents,
   Publishable,
+  System,
   SystemUploads,
   Upload,
   Size,
@@ -82,7 +94,6 @@ export type {
   SubscribableEvents,
   SubscribableFallback,
   TimedAskable,
-  TimedPermission,
   Timeoutable,
   Appearance,
   AppearanceEvents,
@@ -93,10 +104,7 @@ export type {
   DesktopPreferencesEvents,
   DesktopPreferencesSource,
   DesktopPreferencesUpdate,
-  DesktopPointerEvents,
-  DesktopPointerPosition,
-  DesktopPointerSnapshot,
-  DesktopPointerSource,
+  Desktop,
   DesktopSize,
   DesktopSurfaceEvents,
   DesktopSurfaceSnapshot,
@@ -112,7 +120,6 @@ export type {
   WindowState,
   Easing,
   LocalWindow,
-  LocalWindowSurface,
-  VisibilityTransition,
+  LocalWindowOperations,
   Transaction
 } from "@phreshos/core"

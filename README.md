@@ -2,9 +2,9 @@
 
 The SDK for a PhreshOS Program's Client Endpoint.
 
-The Client SDK adapts the sandboxed desktop boundary to the shared Core domain
-model. It exposes the restricted `system` and `context` available inside a
-Client without redefining Program, Process, Endpoint, Server, or Client.
+The Client SDK adapts the Desktop boundary to the shared Core domain model. It
+exposes the same complete `system` contract as the Server and Node SDKs, the
+current Client `context`, and the Client's `desktop` environment.
 
 ## Installation
 
@@ -31,12 +31,12 @@ context.publish("changed", { value: 1 })
 const program = await context.program()
 const process = await context.process()
 const server = context.server
-const window = context.window
+await context.localWindow.move({ x: 20, y: 20 })
 ```
 
 `context` belongs to the executing Client. It provides communication,
-navigation to its Program and Process, its paired Server, its Window, and
-Client-owned capabilities.
+navigation to its Program and Process, its paired Server, and command-only
+control of its local Window representation.
 
 ## System
 
@@ -44,15 +44,23 @@ Client-owned capabilities.
 import { system } from "@phreshos/client"
 
 const appearance = await system.appearance.snapshot()
-const surface = await system.desktop.surface.snapshot()
-const pointer = await system.desktop.pointer.snapshot()
-const preferences = await system.desktop.preferences.snapshot()
+const programs = await system.program.list()
+const processes = await system.process.list()
 ```
 
-The Client System exposes only capabilities allowed by the desktop boundary:
-read-only Appearance, desktop surface and pointer state, writable desktop
-preferences, uploads, Fetch, and exact Service handles. It does not expose
-system-wide Program or Process registries.
+`system` is the complete global System contract sourced from Core.
+
+## Desktop
+
+```ts
+import { desktop } from "@phreshos/client"
+
+const surface = await desktop.surface.snapshot()
+const preferences = await desktop.preferences.snapshot()
+```
+
+Desktop capabilities remain separate from the global System and the current
+execution Context.
 
 Requests read current state. Subscriptions observe future publications and do
 not replay an initial value. Importing the SDK performs neither operation.

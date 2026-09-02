@@ -78,7 +78,7 @@ const parent = { postMessage: message => messages.push(message) }
 globalThis.window = { parent, addEventListener() {} }
 
 const sdk = await import("@phreshos/client")
-const { Client, ClientService, Endpoint, Process, Program, Server, ServerService, Service, context, system } = sdk
+const { Client, ClientService, Endpoint, Process, Program, Server, ServerService, Service, context, desktop, system } = sdk
 
 assert.equal(Program, core.Program)
 assert.equal(Process, core.Process)
@@ -88,31 +88,28 @@ assert.equal(Client, core.Client)
 assert.equal("current" in sdk, false)
 assert.equal(typeof context.process, "function")
 assert.equal(typeof context.name, "function")
-assert.equal(typeof context.window, "object")
-assert.equal(typeof context.window.local, "object")
-assert.equal("localWindow" in context, false)
+assert.equal(typeof context.localWindow, "object")
 assert.equal(typeof context.isService, "function")
 assert.equal("channel" in context, false)
 assert.equal(typeof context.server.isService, "function")
 assert.equal(typeof context.server.waitReady, "function")
-assert.equal(typeof system.desktop.preferences.snapshot, "function")
-assert.equal(typeof system.desktop.preferences.update, "function")
+assert.equal(typeof desktop.preferences.snapshot, "function")
+assert.equal(typeof desktop.preferences.update, "function")
 assert.equal(typeof system.appearance.snapshot, "function")
 assert.equal(typeof system.uploads.write, "function")
 assert.equal(typeof system.uploads.stream, "function")
 assert.equal(typeof system.uploads.stat, "function")
 assert.equal("serve" in system, false)
-assert.equal(typeof system.desktop.surface.snapshot, "function")
-assert.equal(typeof system.desktop.pointer.snapshot, "function")
+assert.equal(typeof desktop.surface.snapshot, "function")
 assert.equal("desktopPreferences" in system, false)
 assert.equal("pointer" in system, false)
-assert.equal(typeof context.window.local.surface.set, "function")
-assert.equal(typeof context.window.local.surface.remove, "function")
-assert.equal("snapshot" in context.window.local.surface, false)
-assert.equal("subscribe" in context.window.local, false)
-assert.equal(typeof context.permission.granted, "function")
-assert.equal(typeof context.permission.request, "function")
-assert.equal("permission" in system, false)
+assert.equal(typeof context.localWindow.addSurface, "function")
+assert.equal(typeof context.localWindow.removeSurface, "function")
+assert.equal(typeof context.localWindow.transaction, "function")
+assert.equal("subscribe" in context.localWindow, false)
+assert.equal(typeof context.permissions.get, "function")
+assert.equal(typeof context.permissions.request, "function")
+assert.equal(typeof context.permissions.timeout, "function")
 const service = system.service({ program: "counter", process: "main", endpoint: "server" })
 const clientService = system.service({ program: "counter", process: "main", endpoint: "client" })
 const exactService = system.service({ process: "1f4b222c-25d7-4ba8-85e5-d5e59cfe0928", endpoint: "server" })
@@ -144,7 +141,7 @@ assert.equal(messages.length, 0)
 
   writeFileSync(
     join(consumer, "consumer.ts"),
-    `import { context, system, Client, Server, type Appearance, type ClientService, type DesktopPointerSnapshot, type DesktopPreferences, type DesktopSurfaceSnapshot, type SystemDesktop, type ServerService, type SystemUploads, type Upload } from "@phreshos/client"
+    `import { context, desktop, system, Client, Server, type Appearance, type ClientService, type Desktop, type DesktopPreferences, type DesktopSurfaceSnapshot, type PermissionChange, type ServerService, type SystemUploads, type Upload } from "@phreshos/client"
 // @ts-expect-error the runtime object is named context
 import { current } from "@phreshos/client"
 
@@ -154,11 +151,10 @@ const appearance: Promise<Appearance> = system.appearance.snapshot()
 const uploads: SystemUploads = system.uploads
 const upload: Promise<Upload> = uploads.write("hello")
 const uploadText: Promise<string> = uploads.text("00000000-0000-0000-0000-000000000000.txt")
-const preferences: Promise<DesktopPreferences> = system.desktop.preferences.snapshot()
-const updatePreferences: Promise<void> = system.desktop.preferences.update({ theme: "default", animations: false })
-const systemDesktop: SystemDesktop = system.desktop
-const desktopSurface: Promise<DesktopSurfaceSnapshot> = system.desktop.surface.snapshot()
-const desktopPointer: Promise<DesktopPointerSnapshot> = system.desktop.pointer.snapshot()
+const preferences: Promise<DesktopPreferences> = desktop.preferences.snapshot()
+const updatePreferences: Promise<void> = desktop.preferences.update({ theme: "default", animations: false })
+const clientDesktop: Desktop = desktop
+const desktopSurface: Promise<DesktopSurfaceSnapshot> = desktop.surface.snapshot()
 const counter: ServerService<CounterEvents> = system.service<CounterEvents>({ program: "counter", process: "main", endpoint: "server" })
 const clientCounter: ClientService<CounterEvents> = system.service<CounterEvents>({ program: "counter", process: "main", endpoint: "client" })
 const inferredClientCounter: ClientService = system.service({ program: "counter", process: "main", endpoint: "client" })
@@ -173,31 +169,33 @@ const sharedProcess: import("@phreshos/core").Process = currentProcess
 const program = await context.program()
 const hasAgent: boolean = program.hasAgent
 const agent: Promise<string | null> = program.agent()
-const desktop = system.desktop.surface.subscribe("resize", snapshot => void snapshot.size.width)
-const pointer = system.desktop.pointer.subscribe("move", snapshot => void snapshot.position?.x)
-const clientSurface: Promise<void> = context.window.local.surface.set({ easing: "ease-out", wait: true })
-const localGeometry: Promise<void> = context.window.local.setGeometry({
+const storedPermission = program.permissions.get("files")
+const permissions = program.permissions.all()
+const assignedPermission: Promise<PermissionChange> = program.permissions.set("files", true)
+const removedPermission: Promise<PermissionChange> = program.permissions.delete("files")
+const requestedPermission: Promise<PermissionChange> = context.permissions.request("files", ["read"])
+const timedPermission: Promise<PermissionChange> = context.permissions.timeout(120_000).request("environment")
+const desktopStop = desktop.surface.subscribe("resize", snapshot => void snapshot.size.width)
+const clientSurface: Promise<void> = context.localWindow.transaction({ easing: "ease-out", wait: true }).addSurface()
+const localGeometry: Promise<void> = context.localWindow.transaction({ duration: 180 }).setGeometry({
   position: { x: 20, y: 20 },
   size: { width: 420, height: 280 }
-}, { duration: 180 })
-const geometry: Promise<void> = context.window.setGeometry({
+})
+const geometry: Promise<void> = context.localWindow.setGeometry({
   position: { x: "0/1", y: "0/1" },
   size: { width: "1/2", height: "1/2" }
 })
-const permission: Promise<boolean | null> = context.permission.request("pointer")
 const server: Server = context.server
 void context.process().then(process => {
   const client: Client | null = process.client
   if (client) {
     void client.start({ title: "Prepared title" })
-    void client.window.local.position()
+    void client.window.position()
   }
   void process.server.start({ service: true })
   void client
 })
 void context.program().then(program => {
-  const samePermission: typeof context.permission = program.permission
-  void samePermission.granted("pointer")
   const shared: Promise<import("@phreshos/client").Process> = program.process.findOrCreate({
     name: "shared-server",
     server: { service: true },
@@ -211,9 +209,8 @@ void preferences
 void updatePreferences
 void upload
 void uploadText
-void systemDesktop
+void clientDesktop
 void desktopSurface
-void desktopPointer
 void counter
 void clientCounter
 void inferredClientCounter
@@ -226,11 +223,15 @@ void processName
 void sharedProcess
 void hasAgent
 void agent
-void desktop
-void pointer
+void storedPermission
+void permissions
+void assignedPermission
+void removedPermission
+void requestedPermission
+void timedPermission
+void desktopStop
 void clientSurface
 void geometry
-void permission
 void server
 `
   )

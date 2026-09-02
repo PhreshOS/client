@@ -1,4 +1,4 @@
-import type { Capture, Cleanup, EventOptions } from "@phreshos/core"
+import type { Capture, Cleanup, EventOptions, Subscribable } from "@phreshos/core"
 
 export const defaultTimeout = 10_000
 
@@ -8,20 +8,18 @@ type EveryListener = (event: string, message: unknown) => unknown
 type Register<Message> = (listener: (message: Message) => unknown, impossible?: Failure) => Cleanup
 
 /** SDK-owned waits, queues and callbacks over boundary forwarding state. */
-export default class Events {
+export default class Events<Vocabulary extends object = {}, Fallback = unknown> implements Subscribable<Vocabulary, Fallback> {
   public constructor(
     private readonly listen: (event: string, listener: Listener, impossible?: Failure) => Cleanup,
     private readonly listenAll: (listener: EveryListener, impossible?: Failure) => Cleanup
   ) {}
 
-  public subscribe(event: string, subscriber: Listener): Cleanup
-  public subscribe(subscriber: (capture: Capture<string, unknown>) => unknown): Cleanup
-  public subscribe(eventOrSubscriber: string | ((capture: Capture<string, unknown>) => unknown), subscriber?: Listener): Cleanup {
+  public readonly subscribe: Subscribable<Vocabulary, Fallback>["subscribe"] = ((eventOrSubscriber: string | ((capture: Capture<string, unknown>) => unknown), subscriber?: Listener) => {
     if (typeof eventOrSubscriber === "string") return this.listen(eventOrSubscriber, subscriber as Listener)
     return this.listenAll((event, message) => eventOrSubscriber({ event, message }))
-  }
+  }) as Subscribable<Vocabulary, Fallback>["subscribe"]
 
-  public waitFor(event: string, timeout = defaultTimeout): Promise<unknown> {
+  public readonly waitFor: Subscribable<Vocabulary, Fallback>["waitFor"] = ((event: string, timeout = defaultTimeout): Promise<unknown> => {
     return new Promise((resolve, reject) => {
       let settled = false
       let stop: Cleanup = () => undefined
@@ -42,11 +40,9 @@ export default class Events {
         error => finish(() => reject(error))
       )
     })
-  }
+  }) as Subscribable<Vocabulary, Fallback>["waitFor"]
 
-  public events(event: string, options?: EventOptions): AsyncIterableIterator<unknown>
-  public events(options?: EventOptions): AsyncIterableIterator<Capture<string, unknown>>
-  public events(eventOrOptions: string | EventOptions = {}, namedOptions: EventOptions = {}) {
+  public readonly events: Subscribable<Vocabulary, Fallback>["events"] = ((eventOrOptions: string | EventOptions = {}, namedOptions: EventOptions = {}) => {
     if (typeof eventOrOptions === "string") {
       return stream((listener, impossible) => this.listen(eventOrOptions, listener, impossible), namedOptions)
     }
@@ -55,7 +51,7 @@ export default class Events {
       (listener, impossible) => this.listenAll((event, message) => listener({ event, message }), impossible),
       eventOrOptions
     )
-  }
+  }) as Subscribable<Vocabulary, Fallback>["events"]
 }
 
 /** Converts one persistent registration into a bounded asynchronous iterator. */

@@ -1,5 +1,5 @@
 import type {
-  Context as CoreContext,
+  ClientContext as CoreClientContext,
   ContextCapture as CoreContextCapture,
   ContextEvents as CoreContextEvents,
   ContextMessage as CoreContextMessage,
@@ -19,20 +19,19 @@ import {
   process,
   program,
   visibleEndpoint,
+  localWindow,
   window as windowHandle,
   type Endpoint,
   type EndpointReference,
   type Process,
   type ProcessRecord,
-  type Program,
   type ProgramRecord,
   type ServerTraffic,
   type ClientTraffic,
-  type Window
 } from "./domain.js"
 import Events from "./events.js"
 import wire from "./wire.js"
-import { currentProgramPermission } from "./permissions.js"
+import { contextPermissions } from "./permissions.js"
 
 /** The executing Process's canonical Server handle. */
 export type ContextServer<Events extends object = {}, Fallback = unknown> = Server<Events, Fallback>
@@ -46,36 +45,7 @@ export type ContextEvents<Events extends object> = CoreContextEvents<Events, End
 /** Every event observable through the current Client Context. */
 export type ContextCapture<Events extends object = {}> = CoreContextCapture<Events, Endpoint | null>
 
-/** Client runtime context: inbound communication, owner hierarchy, and paired Server. */
-export interface Context<Events extends object = {}>
-  extends CoreContext<Events, Endpoint | null> {
-  /** The same Server handle exposed by the executing Process. */
-  readonly server: ContextServer
-
-  /** Presentation capability of the executing Client. */
-  readonly window: Window
-
-  /** The same permission capability exposed by the executing Program. */
-  readonly permission: Program["permission"]
-
-  /** Returns the Process represented by this Client. */
-  process(): Promise<Process>
-
-  /** Returns the executing Process's Program-local name, or `null` when unnamed. */
-  name(): Promise<string | null>
-
-  /** Returns the accessible parent Process, or `null` when none exists. */
-  parent(): Promise<Process | null>
-
-  /** Returns the Program that owns this Client. */
-  program(): Promise<Program>
-
-  /** Returns one immutable option supplied when this Process was created. */
-  option(name: string): Promise<string | undefined>
-
-  /** Stops the executing Client; rejects when it is the final live Endpoint. */
-  stop(): Promise<void>
-}
+export type Context<Events extends object = {}> = CoreClientContext<Events>
 
 const ServerBase = Server as unknown as new () => object
 const ClientBase = Client as unknown as new () => object
@@ -170,10 +140,10 @@ class ContextClientHandle extends ClientBase {
 
 contextClient = new ContextClientHandle(owner) as unknown as Client
 
-class ClientContext extends Events {
+class ClientContext extends Events<ContextEvents<{}>, ContextMessage> implements Context {
   public readonly server = contextServer
-  public readonly window = contextClient.window
-  public readonly permission = currentProgramPermission
+  public readonly localWindow = localWindow(currentAddress)
+  public readonly permissions = contextPermissions()
 
   public constructor() {
     super(
@@ -219,4 +189,4 @@ function contextMessage(value: unknown): ContextMessage {
 }
 
 /** Inbound events, owner hierarchy, and paired Server for this Client runtime. */
-export const context = new ClientContext() as unknown as Context
+export const context: Context = new ClientContext()

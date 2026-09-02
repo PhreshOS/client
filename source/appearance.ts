@@ -1,9 +1,9 @@
-import { createAppearanceSnapshot, type Appearance } from "@phreshos/core"
+import { createAppearanceSnapshot, type Appearance, type AppearanceEvents, type WritableAppearance } from "@phreshos/core"
 import Events from "./events.js"
 import wire from "./wire.js"
 
 /** Read-only System Appearance reached through the Desktop boundary. */
-export default class ClientAppearance extends Events {
+export default class ClientAppearance extends Events<AppearanceEvents, never> implements WritableAppearance {
   public constructor() {
     super(
       (event, listener, impossible) => wire.on("host-appearance", event, value => {
@@ -18,5 +18,9 @@ export default class ClientAppearance extends Events {
   public async snapshot() {
     const [appearance] = await wire.request(["appearance"]) as [Appearance]
     return createAppearanceSnapshot(appearance)
+  }
+
+  public async update(appearance: Appearance) {
+    await wire.request(["updateAppearance", appearance])
   }
 }

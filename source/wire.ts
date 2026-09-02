@@ -80,7 +80,7 @@ class Wire {
   }
 
   /** Opens one long-running desktop operation and yields its ordered values. */
-  public stream(values: unknown[], timeout = defaultTimeout): AsyncIterableIterator<unknown> {
+  public stream(values: unknown[], timeout = defaultTimeout, signal?: AbortSignal): AsyncIterableIterator<unknown> {
     const wire = this
 
     return (async function* () {
@@ -97,6 +97,14 @@ class Wire {
           state.wake = null
         }, timeout)
       }
+      const abort = () => {
+        state.failure = signal?.reason instanceof Error ? signal.reason : new Error("The operation was cancelled")
+        state.wake?.()
+        state.wake = null
+      }
+
+      if (signal?.aborted) abort()
+      else signal?.addEventListener("abort", abort, { once: true })
 
       wire.send("boundary", "expect", question)
       wire.streams.set(question, state)
@@ -116,6 +124,7 @@ class Wire {
         }
       }
       finally {
+        signal?.removeEventListener("abort", abort)
         clearTimeout(state.timer)
         wire.streams.delete(question)
         wire.send("boundary", "forget", question)
@@ -325,10 +334,6 @@ class Wire {
       stop()
       this.send("end-host", "service-unfollow", subscription)
     })
-  }
-
-  public samplePointer(movementX: number, movementY: number) {
-    this.send("end-host", "pointerSample", movementX, movementY)
   }
 
   private register(kind: TrafficKind, route: string, event: string | null, subject: string | null, impossible?: Failure) {

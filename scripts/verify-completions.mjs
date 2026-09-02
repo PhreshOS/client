@@ -7,7 +7,7 @@ import ts from "typescript"
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const file = join(repository, "system-service-completion.ts")
 const marker = "endpoint: \"\""
-const source = `import type { System } from "./source/system.js"
+const source = `import type { System } from "@phreshos/core"
 
 declare const system: System
 

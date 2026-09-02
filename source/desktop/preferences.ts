@@ -1,9 +1,9 @@
-import type { DesktopPreferences, DesktopPreferencesUpdate } from "@phreshos/core"
+import type { DesktopPreferences, DesktopPreferencesEvents, DesktopPreferencesUpdate, WritableDesktopPreferencesSource } from "@phreshos/core"
 import Events from "../events.js"
 import wire from "../wire.js"
 
 /** Effective preferences owned by the Desktop containing this Client. */
-export default class ClientPreferences extends Events {
+export default class ClientPreferences extends Events<DesktopPreferencesEvents, never> implements WritableDesktopPreferencesSource {
   public constructor() {
     super(
       (event, listener, impossible) => wire.on("host-desktop-preferences", event, value => {
