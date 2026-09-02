@@ -9,8 +9,8 @@ import type {
 } from "@phreshos/core"
 import Deadline from "./deadline.js"
 import {
-  Client,
-  Server,
+  ClientEndpoint,
+  ServerEndpoint,
   ServerTrafficHandle,
   TrafficHandle,
   bindEvents,
@@ -33,24 +33,24 @@ import Events from "./events.js"
 import wire from "./wire.js"
 import { contextPermissions } from "./permissions.js"
 
-/** The executing Process's canonical Server handle. */
-export type ContextServer<Events extends object = {}, Fallback = unknown> = Server<Events, Fallback>
+/** The executing Process's canonical Server Endpoint handle. */
+export type ContextServer<Events extends object = {}, Fallback = unknown> = ServerEndpoint<Events, Fallback>
 
-/** One value addressed to the current Client, with a client-visible sender. */
+/** One value addressed to the current Client Endpoint, with a client-visible sender. */
 export type ContextMessage<Payload = unknown> = CoreContextMessage<Payload, Endpoint | null>
 
 /** Applies the client-visible sender envelope to known Context events. */
 export type ContextEvents<Events extends object> = CoreContextEvents<Events, Endpoint | null>
 
-/** Every event observable through the current Client Context. */
+/** Every event observable through the current Client Endpoint Context. */
 export type ContextCapture<Events extends object = {}> = CoreContextCapture<Events, Endpoint | null>
 
 export type Context<Events extends object = {}> = CoreClientContext<Events>
 
-const ServerBase = Server as unknown as new () => object
-const ClientBase = Client as unknown as new () => object
+const ServerEndpointBase = ServerEndpoint as unknown as new () => object
+const ClientEndpointBase = ClientEndpoint as unknown as new () => object
 
-class ContextServerHandle extends ServerBase {
+class ContextServerHandle extends ServerEndpointBase {
   public readonly traffic = new ServerTrafficHandle(null, "server") as unknown as ServerTraffic
   public readonly lifecycle = endpointLifecycle(currentAddress, "server") as unknown as EndpointLifecycle
 
@@ -89,7 +89,7 @@ class ContextServerHandle extends ServerBase {
 
 let ownerPromise: Promise<Process> | null = null
 let contextServer!: ContextServer
-let contextClient!: Client
+let contextClient!: ClientEndpoint
 
 function owner() {
   if (!ownerPromise) {
@@ -110,7 +110,7 @@ function owner() {
 
 contextServer = new ContextServerHandle(owner) as unknown as ContextServer
 
-class ContextClientHandle extends ClientBase {
+class ContextClientHandle extends ClientEndpointBase {
   public readonly traffic = new TrafficHandle(null, "client") as unknown as ClientTraffic
   public readonly lifecycle = endpointLifecycle(currentAddress, "client") as unknown as EndpointLifecycle
   public readonly window = windowHandle(currentAddress)
@@ -138,7 +138,7 @@ class ContextClientHandle extends ClientBase {
   public async waitReady(timeout?: number) { await wire.request(["wait-ready", undefined, "client"], timeout) }
 }
 
-contextClient = new ContextClientHandle(owner) as unknown as Client
+contextClient = new ContextClientHandle(owner) as unknown as ClientEndpoint
 
 class ClientContext extends Events<ContextEvents<{}>, ContextMessage> implements Context {
   public readonly server = contextServer
@@ -188,5 +188,5 @@ function contextMessage(value: unknown): ContextMessage {
   return { from: visibleEndpoint(raw.from), payload: raw.payload }
 }
 
-/** Inbound events, owner hierarchy, and paired Server for this Client runtime. */
+/** Inbound events, owner hierarchy, and paired Server Endpoint for this Client runtime. */
 export const context: Context = new ClientContext()

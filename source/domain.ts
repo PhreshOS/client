@@ -1,9 +1,9 @@
 import {
-  Client as CoreClient,
+  ClientEndpoint as CoreClientEndpoint,
   Endpoint as CoreEndpoint,
   Process as CoreProcess,
   Program as CoreProgram,
-  Server as CoreServer,
+  ServerEndpoint as CoreServerEndpoint,
   type AnswerCapture as CoreAnswerCapture,
   type AnswerMessage as CoreAnswerMessage,
   type AnswerSubscriber as CoreAnswerSubscriber,
@@ -27,16 +27,11 @@ import {
   type Position,
   type ProgramCommandChunk,
   type ProgramIconSize,
+  type ProgramProcess as CoreProgramProcess,
+  type ProgramProcessRunEvent as CoreProgramProcessRunEvent,
+  type ProgramProcessRunOptions as CoreProgramProcessRunOptions,
   type ServerTraffic as CoreServerTraffic,
   type Size,
-  type SystemClientEntity,
-  type SystemEndpointEntity,
-  type SystemProcessEntity,
-  type SystemProcessRunEvent,
-  type SystemProcessRunOptions,
-  type SystemProgramEntity,
-  type SystemProgramProcess,
-  type SystemServerEntity,
   type TrafficMessage as CoreTrafficMessage,
   type TrafficCapture as CoreTrafficCapture,
   type TrafficEvents as CoreTrafficEvents,
@@ -75,6 +70,7 @@ export interface ClientDeclarationRecord extends EndpointDeclarationRecord {
 export interface ProgramRecord {
   reference: string
   identity: string
+  assetId: string
   installed?: boolean
   name: string
   version: string | null
@@ -104,11 +100,11 @@ export interface EndpointReference {
 
 export type WindowRecord = WindowState
 
-export type Program = SystemProgramEntity
-export type ProgramProcess = SystemProgramProcess
-export type ProgramProcessRunEvent = SystemProcessRunEvent
-export type ProgramProcessRunOptions = SystemProcessRunOptions
-export type Process = SystemProcessEntity
+export type Program = CoreProgram
+export type ProgramProcess = CoreProgramProcess
+export type ProgramProcessRunEvent = CoreProgramProcessRunEvent
+export type ProgramProcessRunOptions = CoreProgramProcessRunOptions
+export type Process = CoreProcess
 
 /** Traffic value resolved to the same global Endpoint handles as the System. */
 export type TrafficMessage<Payload = unknown> = CoreTrafficMessage<Payload, Endpoint | null>
@@ -119,43 +115,43 @@ export type TrafficEvents<Events extends object> = CoreTrafficEvents<Events, End
 /** Every ordinary event observable in client-visible Endpoint traffic. */
 export type TrafficCapture<Events extends object = {}, Fallback = unknown> = CoreTrafficCapture<Events, Endpoint | null, Fallback>
 
-/** Question carrying its globally resolved Server destination. */
-export type AskMessage<Payload = unknown> = CoreAskMessage<Payload, Server | null>
+/** Question carrying its globally resolved Server Endpoint destination. */
+export type AskMessage<Payload = unknown> = CoreAskMessage<Payload, ServerEndpoint | null>
 
 /** One question observable in client-visible Endpoint traffic. */
-export type AskCapture<Payload = unknown> = CoreAskCapture<Payload, Server | null>
+export type AskCapture<Payload = unknown> = CoreAskCapture<Payload, ServerEndpoint | null>
 
 /** Callback that observes questions sent by a client-visible Endpoint. */
-export type AskSubscriber<Payload = unknown> = CoreAskSubscriber<Payload, Server | null>
+export type AskSubscriber<Payload = unknown> = CoreAskSubscriber<Payload, ServerEndpoint | null>
 
 /** Answer carrying its globally resolved Endpoint destination. */
 export type AnswerMessage<Result = unknown> = CoreAnswerMessage<Result, Endpoint | null>
 
-/** One answer observable in client-visible Server traffic. */
+/** One answer observable in client-visible Server Endpoint traffic. */
 export type AnswerCapture<Result = unknown> = CoreAnswerCapture<Result, Endpoint | null>
 
-/** Callback that observes answers sent by a client-visible Server. */
+/** Callback that observes answers sent by a client-visible Server Endpoint. */
 export type AnswerSubscriber<Result = unknown> = CoreAnswerSubscriber<Result, Endpoint | null>
 
 /** Directed communication originating from one client-visible Endpoint. */
-export type EndpointTraffic<Events extends object = {}, Fallback = unknown> = CoreEndpointTraffic<Events, Endpoint | null, Server | null, Fallback>
+export type EndpointTraffic<Events extends object = {}, Fallback = unknown> = CoreEndpointTraffic<Events, Endpoint | null, ServerEndpoint | null, Fallback>
 
-/** Directed communication originating from one client-visible Server. */
-export type ServerTraffic<Events extends object = {}, Fallback = unknown> = CoreServerTraffic<Events, Endpoint | null, Server | null, Fallback>
+/** Directed communication originating from one client-visible Server Endpoint. */
+export type ServerTraffic<Events extends object = {}, Fallback = unknown> = CoreServerTraffic<Events, Endpoint | null, ServerEndpoint | null, Fallback>
 
-/** Directed communication originating from one client-visible Client. */
-export type ClientTraffic<Events extends object = {}, Fallback = unknown> = CoreClientTraffic<Events, Endpoint | null, Server | null, Fallback>
+/** Directed communication originating from one client-visible Client Endpoint. */
+export type ClientTraffic<Events extends object = {}, Fallback = unknown> = CoreClientTraffic<Events, Endpoint | null, ServerEndpoint | null, Fallback>
 
-export type Endpoint<Events extends object = {}, Fallback = unknown> = SystemEndpointEntity<Events, Fallback>
-export type Server<Events extends object = {}, Fallback = unknown> = SystemServerEntity<Events, Fallback>
-export type Client<Events extends object = {}, Fallback = unknown> = SystemClientEntity<Events, Fallback>
+export type Endpoint<Events extends object = {}, Fallback = unknown> = CoreEndpoint<Events, Fallback>
+export type ServerEndpoint<Events extends object = {}, Fallback = unknown> = CoreServerEndpoint<Events, Fallback>
+export type ClientEndpoint<Events extends object = {}, Fallback = unknown> = CoreClientEndpoint<Events, Fallback>
 export type Window = CoreWindow
 
 const handles = new HandleRegistry()
 const ProgramBase = CoreProgram as unknown as new () => object
 const ProcessBase = CoreProcess as unknown as new () => object
-const ServerBase = CoreServer as unknown as new () => object
-const ClientBase = CoreClient as unknown as new () => object
+const ServerEndpointBase = CoreServerEndpoint as unknown as new () => object
+const ClientEndpointBase = CoreClientEndpoint as unknown as new () => object
 
 class ProgramHandle extends ProgramBase {
   public readonly identity: string
@@ -187,6 +183,7 @@ class ProgramHandle extends ProgramBase {
   }
 
   public get name() { return this.record.name }
+  public get assetId() { return this.record.assetId }
   public get version() { return this.record.version }
   public get description() { return this.record.description }
   public get hasAgent() { return this.record.hasAgent }
@@ -347,12 +344,12 @@ class ProcessHandle extends ProcessBase {
   public readonly reference: string
   public readonly name: string | null
   public readonly startedAt: Date
-  public readonly server: Server
-  public readonly client: Client
+  public readonly server: ServerEndpoint
+  public readonly client: ClientEndpoint
   private readonly ownerProgram: Program
   private readonly options: Record<string, string>
 
-  public constructor(record: ProcessRecord, endpoints: { server?: Server, client?: Client } = {}) {
+  public constructor(record: ProcessRecord, endpoints: { server?: ServerEndpoint, client?: ClientEndpoint } = {}) {
     super()
     this.identity = record.identity
     this.reference = record.reference
@@ -360,8 +357,8 @@ class ProcessHandle extends ProcessBase {
     this.startedAt = new Date(record.startedAt)
     this.ownerProgram = program(record.program)
     this.options = record.options
-    this.server = endpointHandle(this, "server", endpoints.server) as Server
-    this.client = endpointHandle(this, "client", endpoints.client) as Client
+    this.server = endpointHandle(this, "server", endpoints.server) as ServerEndpoint
+    this.client = endpointHandle(this, "client", endpoints.client) as ClientEndpoint
     bindEvents(this, scoped("process-host", record.reference, processEvent))
   }
 
@@ -431,7 +428,7 @@ export class ServerTrafficHandle extends TrafficHandle {
   }
 }
 
-class ServerHandle extends ServerBase {
+class ServerEndpointHandle extends ServerEndpointBase {
   public readonly traffic: ServerTrafficHandle
   public readonly lifecycle: EndpointLifecycle
 
@@ -477,7 +474,7 @@ class ServerHandle extends ServerBase {
   }
 }
 
-class ClientHandle extends ClientBase {
+class ClientEndpointHandle extends ClientEndpointBase {
   public readonly traffic: TrafficHandle
   public readonly lifecycle: EndpointLifecycle
   public readonly window: Window
@@ -691,7 +688,7 @@ export function program(record: ProgramRecord): Program {
   return handle as unknown as Program
 }
 
-export function process(record: ProcessRecord, endpoints: { server?: Server, client?: Client } = {}): Process {
+export function process(record: ProcessRecord, endpoints: { server?: ServerEndpoint, client?: ClientEndpoint } = {}): Process {
   return handles.obtain(`process:${record.reference}`, () => new ProcessHandle(record, endpoints)) as unknown as Process
 }
 
@@ -707,7 +704,7 @@ export function claimEndpoint(reference: string, kind: "server" | "client", endp
 
 function endpointHandle(owner: ProcessHandle, kind: "server" | "client", preferred?: Endpoint) {
   return handles.obtain(`endpoint:${owner.reference}:${kind}`, () => preferred ?? (
-    kind === "server" ? new ServerHandle(owner) : new ClientHandle(owner)
+    kind === "server" ? new ServerEndpointHandle(owner) : new ClientEndpointHandle(owner)
   ))
 }
 
@@ -719,7 +716,7 @@ export function localWindow(target: WindowTarget): LocalWindow {
   return new LocalWindowHandle(target)
 }
 
-/** Resolves an Endpoint reference through the Client's global handle registry. */
+/** Resolves an Endpoint reference through the Client Endpoint's global handle registry. */
 export function visibleEndpoint(reference: EndpointReference | null | undefined): Endpoint | null {
   if (reference === null) return null
   return endpoint(reference)
@@ -734,8 +731,8 @@ export const Process = CoreProcess
 /** Runtime constructor shared by all client-visible Endpoint handles. */
 export const Endpoint = CoreEndpoint
 
-/** Runtime constructor shared by all client-visible Server handles. */
-export const Server = CoreServer
+/** Runtime constructor shared by all client-visible Server Endpoint handles. */
+export const ServerEndpoint = CoreServerEndpoint
 
-/** Runtime constructor shared by all client-visible Client handles. */
-export const Client = CoreClient
+/** Runtime constructor shared by all client-visible Client Endpoint handles. */
+export const ClientEndpoint = CoreClientEndpoint

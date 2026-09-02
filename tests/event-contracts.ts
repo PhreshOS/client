@@ -16,7 +16,7 @@ function declaredServer(server: ContextServer<{ changed: number }>) {
 void declaredServer
 
 function closedServer(server: ContextServer<{}, never>) {
-  // @ts-expect-error An explicitly closed Server rejects undeclared events.
+  // @ts-expect-error An explicitly closed Server Endpoint rejects undeclared events.
   server.subscribe("unknown", () => undefined)
 }
 

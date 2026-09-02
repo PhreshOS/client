@@ -25,7 +25,7 @@ export function programPermissions(program: HandleAddress): ProgramPermissions {
   }
 }
 
-/** Stored grants and owner requests belonging to the current Client. */
+/** Stored grants and owner requests belonging to the current Client Endpoint. */
 export function contextPermissions(): ContextPermissions {
   const timed = (timeout: number): TimedContextPermissions => ({
     async request(name: string, permission: PermissionRequest = true) {

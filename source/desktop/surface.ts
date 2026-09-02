@@ -2,7 +2,7 @@ import type { DesktopSurfaceEvents, DesktopSurfaceSnapshot, DesktopSurfaceSource
 import Events from "../events.js"
 import wire from "../wire.js"
 
-/** Read-only access to the Desktop surface containing this Client. */
+/** Read-only access to the Desktop surface containing this Client Endpoint. */
 export default class ClientSurface extends Events<DesktopSurfaceEvents, never> implements DesktopSurfaceSource {
   public constructor() {
     super(

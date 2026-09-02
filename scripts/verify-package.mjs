@@ -78,13 +78,13 @@ const parent = { postMessage: message => messages.push(message) }
 globalThis.window = { parent, addEventListener() {} }
 
 const sdk = await import("@phreshos/client")
-const { Client, ClientService, Endpoint, Process, Program, Server, ServerService, Service, context, desktop, system } = sdk
+const { ClientEndpoint, ClientService, Endpoint, Process, Program, ServerEndpoint, ServerService, Service, context, desktop, system } = sdk
 
 assert.equal(Program, core.Program)
 assert.equal(Process, core.Process)
 assert.equal(Endpoint, core.Endpoint)
-assert.equal(Server, core.Server)
-assert.equal(Client, core.Client)
+assert.equal(ServerEndpoint, core.ServerEndpoint)
+assert.equal(ClientEndpoint, core.ClientEndpoint)
 assert.equal("current" in sdk, false)
 assert.equal(typeof context.process, "function")
 assert.equal(typeof context.name, "function")
@@ -141,7 +141,7 @@ assert.equal(messages.length, 0)
 
   writeFileSync(
     join(consumer, "consumer.ts"),
-    `import { context, desktop, system, Client, Server, type Appearance, type ClientService, type Desktop, type DesktopPreferences, type DesktopSurfaceSnapshot, type PermissionChange, type ServerService, type SystemUploads, type Upload } from "@phreshos/client"
+    `import { context, desktop, system, ClientEndpoint, ServerEndpoint, type Appearance, type ClientService, type Desktop, type DesktopPreferences, type DesktopSurfaceSnapshot, type PermissionChange, type ServerService, type SystemUploads, type Upload } from "@phreshos/client"
 // @ts-expect-error the runtime object is named context
 import { current } from "@phreshos/client"
 
@@ -185,9 +185,9 @@ const geometry: Promise<void> = context.localWindow.setGeometry({
   position: { x: "0/1", y: "0/1" },
   size: { width: "1/2", height: "1/2" }
 })
-const server: Server = context.server
+const server: ServerEndpoint = context.server
 void context.process().then(process => {
-  const client: Client | null = process.client
+  const client: ClientEndpoint | null = process.client
   if (client) {
     void client.start({ title: "Prepared title" })
     void client.window.position()

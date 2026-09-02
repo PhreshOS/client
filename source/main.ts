@@ -15,11 +15,11 @@ export {
   type ServiceKey,
 } from "@phreshos/core"
 export {
-  Client,
+  ClientEndpoint,
   Endpoint,
   Process,
   Program,
-  Server,
+  ServerEndpoint,
   type Window,
   type ProgramProcess,
   type ProgramProcessRunEvent,
@@ -82,6 +82,7 @@ export type {
   ProgramEvents,
   ProgramProcessEvents,
   ProgramProcessExit,
+  ProgramStartup,
   ProgramSql,
   ProgramStore,
   ProcessEvents,

@@ -1,10 +1,10 @@
-import type { ProgramSql, ProgramStore, SystemStorage } from "@phreshos/core"
+import type { ProgramSql, ProgramStore, Storage as CoreStorage } from "@phreshos/core"
 import { content, type ContentBody } from "./content.js"
 import controlledStream from "./controlled-stream.js"
 import type { HandleAddress } from "./domain.js"
 import wire from "./wire.js"
 
-export type Storage = SystemStorage
+export type Storage = CoreStorage
 
 /** Client-side access to one exact Program storage area. */
 export function area(program: HandleAddress, which: "data" | "cache"): Storage {

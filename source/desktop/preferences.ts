@@ -2,7 +2,7 @@ import type { DesktopPreferences, DesktopPreferencesEvents, DesktopPreferencesUp
 import Events from "../events.js"
 import wire from "../wire.js"
 
-/** Effective preferences owned by the Desktop containing this Client. */
+/** Effective preferences owned by the Desktop containing this Client Endpoint. */
 export default class ClientPreferences extends Events<DesktopPreferencesEvents, never> implements WritableDesktopPreferencesSource {
   public constructor() {
     super(
