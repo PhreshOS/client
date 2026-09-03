@@ -96,6 +96,7 @@ assert.equal(typeof context.server.waitReady, "function")
 assert.equal(typeof desktop.preferences.snapshot, "function")
 assert.equal(typeof desktop.preferences.update, "function")
 assert.equal(typeof system.appearance.snapshot, "function")
+assert.equal(typeof system.shell, "function")
 assert.equal(typeof system.uploads.write, "function")
 assert.equal(typeof system.uploads.stream, "function")
 assert.equal(typeof system.uploads.stat, "function")
@@ -148,6 +149,7 @@ import { current } from "@phreshos/client"
 type CounterEvents = { change: number }
 
 const appearance: Promise<Appearance> = system.appearance.snapshot()
+const shell: AsyncGenerator<import("@phreshos/client").ShellEvent, void, void> = system.shell("printf hello", { signal: new AbortController().signal })
 const uploads: SystemUploads = system.uploads
 const upload: Promise<Upload> = uploads.write("hello")
 const uploadText: Promise<string> = uploads.text("00000000-0000-0000-0000-000000000000.txt")
@@ -204,6 +206,7 @@ void context.program().then(program => {
   void shared
 })
 void localGeometry
+void shell
 
 void preferences
 void updatePreferences

@@ -60,6 +60,8 @@ export type {
   FileStat,
   Launch,
   ServerLaunch,
+  ShellEvent,
+  ShellOptions,
   Layer,
   LogKind,
   LogRecord,

@@ -1,14 +1,16 @@
-import type {
-  ClientService,
-  ProgramDefinition,
-  ServerService,
-  ServiceKey,
-  System as CoreSystem,
-  SystemProcess as CoreSystemProcess,
-  SystemProcessEvents,
-  SystemProgram as CoreSystemProgram,
-  SystemProgramEvents,
-  WritableAppearance
+import {
+  parseShellEvent,
+  type ClientService,
+  type ProgramDefinition,
+  type ServerService,
+  type ServiceKey,
+  type ShellOptions,
+  type System as CoreSystem,
+  type SystemProcess as CoreSystemProcess,
+  type SystemProcessEvents,
+  type SystemProgram as CoreSystemProgram,
+  type SystemProgramEvents,
+  type WritableAppearance
 } from "@phreshos/core"
 import ClientAppearance from "./appearance.js"
 import wire from "./wire.js"
@@ -112,6 +114,12 @@ class ClientSystem implements CoreSystem {
     })
 
     return response
+  }
+
+  public async *shell(command: string, options: ShellOptions = {}) {
+    const { signal, ...settings } = options
+
+    for await (const event of wire.stream(["shell", command, settings], undefined, signal)) yield parseShellEvent(event)
   }
 
 }
