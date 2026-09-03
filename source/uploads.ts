@@ -5,6 +5,12 @@ import wire from "./wire.js"
 
 /** Flat upload access transported through the Client's Desktop boundary. */
 class ClientUploads implements SystemUploads {
+  public async path() {
+    const answer = await wire.request(["uploads", "path"]) as [string]
+    if (typeof answer[0] !== "string" || !answer[0]) throw new Error("The System returned an invalid uploads path")
+    return answer[0]
+  }
+
   public async write(value: unknown): Promise<Upload> {
     const source = content(value)
     const channel = new MessageChannel()
