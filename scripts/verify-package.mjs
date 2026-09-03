@@ -175,12 +175,16 @@ const sharedProcess: import("@phreshos/core").Process = currentProcess
 const program = await context.program()
 const hasAgent: boolean = program.hasAgent
 const agent: Promise<string | null> = program.agent()
-const storedPermission = program.permissions.get("files")
+const storedPermission = program.permissions.get("all")
 const permissions = program.permissions.all()
-const assignedPermission: Promise<PermissionChange> = program.permissions.set("files", true)
-const removedPermission: Promise<PermissionChange> = program.permissions.delete("files")
-const requestedPermission: Promise<PermissionChange> = context.permissions.request("files", ["read"])
-const timedPermission: Promise<PermissionChange> = context.permissions.timeout(120_000).request("environment")
+const assignedPermission: Promise<PermissionChange> = program.permissions.set("all", true)
+const removedPermission: Promise<PermissionChange> = program.permissions.delete("all")
+const requestedPermission: Promise<PermissionChange> = context.permissions.request("all", [])
+const timedPermission: Promise<PermissionChange> = context.permissions.timeout(120_000).request("all")
+// @ts-expect-error permission names are closed by the Core catalog
+context.permissions.get("files")
+// @ts-expect-error a value-less permission accepts no string values
+context.permissions.request("all", ["read"])
 const desktopStop = desktop.surface.subscribe("resize", snapshot => void snapshot.size.width)
 const windowStop = context.window.subscribe("move", position => void position.x)
 const windowPosition = context.window.position()

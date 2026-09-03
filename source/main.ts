@@ -12,6 +12,8 @@ export {
   ClientService,
   ServerService,
   Service,
+  clientPermissionCatalog,
+  isPermissionName,
   type ServiceKey,
 } from "@phreshos/core"
 export {
@@ -72,7 +74,9 @@ export type {
   Permission,
   PermissionChange,
   PermissionInput,
+  PermissionName,
   PermissionRequest,
+  PermissionValue,
   Permissions,
   ClientPermissionDeclarations,
   ClientPermissions,
