@@ -3,7 +3,7 @@ import Deadline from "./deadline.js"
 import type { HandleAddress } from "./domain.js"
 import { defaultTimeout } from "./events.js"
 import captureClientOutput from "./log.js"
-import { deserialize, serialize } from "./messagepack.js"
+import { deserialize, serialize } from "@the-link/messagepack"
 
 type Handler = (...values: unknown[]) => unknown
 type Failure = (error: Error) => void
