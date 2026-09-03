@@ -1,4 +1,4 @@
-import type { Cleanup, Outcome, ServiceKey } from "@phreshos/core"
+import type { Cleanup, ServiceKey } from "@phreshos/core"
 import Deadline from "./deadline.js"
 import type { HandleAddress } from "./domain.js"
 import { defaultTimeout } from "./events.js"
@@ -23,6 +23,10 @@ interface PendingStream {
   wake: (() => void) | null
   timer: ReturnType<typeof setTimeout>
 }
+
+type RequestOutcome<Result = unknown> =
+  | Readonly<{ success: true, result: Result }>
+  | Readonly<{ success: false, error: string }>
 
 /** The client endpoint's sole postMessage adapter. */
 class Wire {
@@ -58,7 +62,7 @@ class Wire {
       }
 
       if (values[0] === "answer" && typeof values[1] === "string") {
-        this.settle(values[1], values.at(-1) as Outcome)
+        this.settle(values[1], values.at(-1) as RequestOutcome)
         return
       }
 
@@ -358,7 +362,7 @@ class Wire {
     for (const observer of [...this.every.get(route) ?? []]) invoke(observer, [event, ...message])
   }
 
-  private settle(question: string, outcome: Outcome) {
+  private settle(question: string, outcome: RequestOutcome) {
     const pending = this.pending.get(question)
     if (!pending) return
     this.pending.delete(question)
@@ -385,7 +389,7 @@ class Wire {
       else stream.queue.push(value)
     }
     else if (operation === "answer") {
-      const outcome = value as Outcome
+      const outcome = value as RequestOutcome
 
       if (outcome?.success === true) stream.ended = true
       else if (outcome?.success === false && typeof outcome.error === "string") stream.failure = new Error(outcome.error)

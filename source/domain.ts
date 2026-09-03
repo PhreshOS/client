@@ -7,6 +7,7 @@ import {
   parseClientPermissions,
   type AnswerCapture as CoreAnswerCapture,
   type AnswerMessage as CoreAnswerMessage,
+  type AnswerOutcome,
   type AnswerSubscriber as CoreAnswerSubscriber,
   type AskCapture as CoreAskCapture,
   type AskMessage as CoreAskMessage,
@@ -24,7 +25,6 @@ import {
   type ServerLaunch,
   type LocalWindow,
   type LocalWindowOperations,
-  type Outcome,
   type Position,
   type ProgramCommandChunk,
   type ProgramIconSize,
@@ -423,8 +423,8 @@ export class ServerTrafficHandle extends TrafficHandle {
   private followAnswers(subscriber: (capture: AnswerCapture) => unknown, impossible?: (error: Error) => void): Cleanup {
     return wire.observe(this.target, "server", "answer", null, (event, questionId, value) => {
       if (typeof event !== "string" || typeof questionId !== "string") return
-      const raw = value as { to?: EndpointReference | null, outcome?: Outcome }
-      subscriber({ event, questionId, message: { to: visibleEndpoint(raw.to), outcome: raw.outcome as Outcome } })
+      const raw = value as { to?: EndpointReference | null, outcome?: AnswerOutcome }
+      subscriber({ event, questionId, message: { to: visibleEndpoint(raw.to), outcome: raw.outcome as AnswerOutcome } })
     }, impossible)
   }
 }

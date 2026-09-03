@@ -42,6 +42,7 @@ export {
 
 export type {
   Askable,
+  AnswerOutcome,
   ClientContext,
   Capture,
   Captures,
@@ -70,7 +71,6 @@ export type {
   LogSource,
   Message,
   OtherStat,
-  Outcome,
   Permission,
   PermissionChange,
   PermissionDefinition,
