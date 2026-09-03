@@ -20,6 +20,7 @@ import controlledStream from "./controlled-stream.js"
 import Events from "./events.js"
 import { exit, process, program, type ProcessRecord, type ProgramRecord } from "./domain.js"
 import { systemStorage } from "./storage.js"
+import websocket from "./websocket.js"
 
 type ServiceEndpoint = ServiceKey["endpoint"]
 
@@ -114,6 +115,10 @@ class ClientSystem implements CoreSystem {
     })
 
     return response
+  }
+
+  public websocket(url: string | URL, protocols?: string | string[]) {
+    return websocket(url, protocols)
   }
 
   public async *shell(command: string, options: ShellOptions = {}) {
