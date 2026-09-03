@@ -142,6 +142,7 @@ contextClient = new ContextClientHandle(owner) as unknown as ClientEndpoint
 
 class ClientContext extends Events<ContextEvents<{}>, ContextMessage> implements Context {
   public readonly server = contextServer
+  public readonly window = contextClient.window
   public readonly localWindow = localWindow(currentAddress)
   public readonly permissions = contextPermissions()
 

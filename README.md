@@ -31,12 +31,14 @@ context.publish("changed", { value: 1 })
 const program = await context.program()
 const process = await context.process()
 const server = context.server
+const position = await context.window.position()
 await context.localWindow.move({ x: 20, y: 20 })
 ```
 
 `context` belongs to the executing Client. It provides communication,
-navigation to its Program and Process, its paired Server, and command-only
-control of its local Window representation.
+navigation to its Program and Process, its paired Server, the authoritative
+current Window through `window`, and command-only control of the current
+Desktop representation through `localWindow`.
 
 ## System
 

@@ -88,6 +88,7 @@ assert.equal(ClientEndpoint, core.ClientEndpoint)
 assert.equal("current" in sdk, false)
 assert.equal(typeof context.process, "function")
 assert.equal(typeof context.name, "function")
+assert.equal(typeof context.window, "object")
 assert.equal(typeof context.localWindow, "object")
 assert.equal(typeof context.isService, "function")
 assert.equal("channel" in context, false)
@@ -169,6 +170,7 @@ const counterAnswer: Promise<number> = counter.ask<number>("value")
 const serviceRole: Promise<boolean> = context.isService()
 const processName: Promise<string | null> = context.name()
 const currentProcess = await context.process()
+assert.equal(context.window, currentProcess.client.window)
 const sharedProcess: import("@phreshos/core").Process = currentProcess
 const program = await context.program()
 const hasAgent: boolean = program.hasAgent
@@ -180,6 +182,8 @@ const removedPermission: Promise<PermissionChange> = program.permissions.delete(
 const requestedPermission: Promise<PermissionChange> = context.permissions.request("files", ["read"])
 const timedPermission: Promise<PermissionChange> = context.permissions.timeout(120_000).request("environment")
 const desktopStop = desktop.surface.subscribe("resize", snapshot => void snapshot.size.width)
+const windowStop = context.window.subscribe("move", position => void position.x)
+const windowPosition = context.window.position()
 const clientSurface: Promise<void> = context.localWindow.transaction({ easing: "ease-out", wait: true }).addSurface()
 const localGeometry: Promise<void> = context.localWindow.transaction({ duration: 180 }).setGeometry({
   position: { x: 20, y: 20 },
@@ -235,6 +239,8 @@ void removedPermission
 void requestedPermission
 void timedPermission
 void desktopStop
+void windowStop
+void windowPosition
 void clientSurface
 void geometry
 void server
