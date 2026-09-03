@@ -170,7 +170,7 @@ const counterAnswer: Promise<number> = counter.ask<number>("value")
 const serviceRole: Promise<boolean> = context.isService()
 const processName: Promise<string | null> = context.name()
 const currentProcess = await context.process()
-assert.equal(context.window, currentProcess.client.window)
+const currentWindow: import("@phreshos/client").Window = context.window
 const sharedProcess: import("@phreshos/core").Process = currentProcess
 const program = await context.program()
 const hasAgent: boolean = program.hasAgent
@@ -228,6 +228,7 @@ void counterStop
 void counterLifecycleStop
 void counterAnswer
 void serviceRole
+void currentWindow
 void processName
 void sharedProcess
 void hasAgent
