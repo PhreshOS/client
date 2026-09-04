@@ -72,7 +72,6 @@ export type {
   Message,
   OtherStat,
   Permission,
-  PermissionChange,
   PermissionDefinition,
   PermissionDefinitions,
   PermissionInput,

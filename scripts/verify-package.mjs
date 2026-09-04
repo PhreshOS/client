@@ -145,7 +145,7 @@ assert.equal(messages.length, 0)
 
   writeFileSync(
     join(consumer, "consumer.ts"),
-    `import { context, desktop, system, ClientEndpoint, ServerEndpoint, type Appearance, type ClientService, type Desktop, type DesktopPreferences, type DesktopSurfaceSnapshot, type PermissionChange, type ServerService, type SystemUploads, type Upload } from "@phreshos/client"
+    `import { context, desktop, system, ClientEndpoint, ServerEndpoint, type Appearance, type ClientService, type Desktop, type DesktopPreferences, type DesktopSurfaceSnapshot, type Permission, type ServerService, type SystemUploads, type Upload } from "@phreshos/client"
 // @ts-expect-error the runtime object is named context
 import { current } from "@phreshos/client"
 
@@ -184,8 +184,8 @@ const removedPermission: Promise<void> = program.permissions.delete("all")
 // @ts-expect-error permissions belong to the Program, never one Process
 currentProcess.permissions
 const effectiveAllows: Promise<boolean> = context.permissions.allows("network", ["https://api.example.com"])
-const requestedPermission: Promise<PermissionChange> = context.permissions.request("all", [])
-const timedPermission: Promise<PermissionChange> = context.permissions.timeout(120_000).request("all")
+const requestedPermission: Promise<Permission<"all">> = context.permissions.request("all", [])
+const timedPermission: Promise<Permission<"all">> = context.permissions.timeout(120_000).request("all")
 // @ts-expect-error permission names are closed by the Core catalog
 context.permissions.get("files")
 // @ts-expect-error a value-less permission accepts no string values

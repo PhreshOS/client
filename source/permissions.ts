@@ -6,7 +6,7 @@ import type {
   ProgramPermissions,
   TimedContextPermissions
 } from "@phreshos/core"
-import { parsePermission, parsePermissionChange, parsePermissions } from "@phreshos/core"
+import { parsePermission, parsePermissions } from "@phreshos/core"
 import type { HandleAddress } from "./domain.js"
 import wire from "./wire.js"
 
@@ -34,9 +34,7 @@ export function contextPermissions(): ContextPermissions {
       const identity = crypto.randomUUID()
       const result = await wire.requestOrNull(["context-permission-request", identity, name, permission], timeout)
 
-      return result === null
-        ? Object.freeze({ permission: null, needReload: false })
-        : parsePermissionChange(name, (result as [unknown])[0])
+      return result === null ? null : parsePermission(name, (result as [unknown])[0])
     }
   })
 
