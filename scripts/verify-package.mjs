@@ -178,8 +178,15 @@ const hasAgent: boolean = program.hasAgent
 const agent: Promise<string | null> = program.agent()
 const storedPermission = program.permissions.get("all")
 const permissions = program.permissions.all()
-const assignedPermission: Promise<PermissionChange> = program.permissions.set("all", true)
-const removedPermission: Promise<PermissionChange> = program.permissions.delete("all")
+const storedAllows: Promise<boolean> = program.permissions.allows("network", ["https://api.example.com"])
+const assignedPermission: Promise<void> = program.permissions.set("all", true)
+const removedPermission: Promise<void> = program.permissions.delete("all")
+const temporaryPermission = currentProcess.permissions.get("network")
+const temporaryPermissions = currentProcess.permissions.all()
+const temporaryAllows: Promise<boolean> = currentProcess.permissions.allows("network", ["https://api.example.com"])
+const assignedTemporaryPermission: Promise<void> = currentProcess.permissions.set("network", ["https://api.example.com"])
+const removedTemporaryPermission: Promise<void> = currentProcess.permissions.delete("network")
+const effectiveAllows: Promise<boolean> = context.permissions.allows("network", ["https://api.example.com"])
 const requestedPermission: Promise<PermissionChange> = context.permissions.request("all", [])
 const timedPermission: Promise<PermissionChange> = context.permissions.timeout(120_000).request("all")
 // @ts-expect-error permission names are closed by the Core catalog
@@ -240,8 +247,15 @@ void hasAgent
 void agent
 void storedPermission
 void permissions
+void storedAllows
 void assignedPermission
 void removedPermission
+void temporaryPermission
+void temporaryPermissions
+void temporaryAllows
+void assignedTemporaryPermission
+void removedTemporaryPermission
+void effectiveAllows
 void requestedPermission
 void timedPermission
 void desktopStop
