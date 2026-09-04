@@ -1,10 +1,8 @@
 import type {
   ContextPermissions,
   PermissionInput,
-  PermissionAssignments,
   PermissionName,
   PermissionRequest,
-  ProcessPermissions,
   ProgramPermissions,
   TimedContextPermissions
 } from "@phreshos/core"
@@ -16,17 +14,8 @@ export const defaultPermissionTimeout = 120_000
 
 /** Bind authoritative stored grants to one exact Program handle. */
 export function programPermissions(program: HandleAddress): ProgramPermissions {
-  return assignedPermissions("program-permissions", program)
-}
-
-/** Bind temporary grants to one exact Process handle. */
-export function processPermissions(process: HandleAddress): ProcessPermissions {
-  return assignedPermissions("process-permissions", process)
-}
-
-function assignedPermissions(word: "program-permissions" | "process-permissions", subject: HandleAddress): PermissionAssignments {
   const operate = <Name extends PermissionName>(operation: "all" | "get" | "allows" | "set" | "delete", name?: Name, permission?: PermissionInput<Name>) => (
-    wire.request([word, subject, operation, name, permission])
+    wire.request(["program-permissions", program, operation, name, permission])
   )
 
   return {
