@@ -108,6 +108,7 @@ export type {
   AppearanceEvents,
   AppearanceSource,
   AppearanceSurface,
+  AppearanceShadow,
   AnimationsPreference,
   DesktopPreferences,
   DesktopPreferencesEvents,
