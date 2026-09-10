@@ -9,6 +9,7 @@ import manifest from "../package.json" with { type: "json" }
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const temporary = mkdtempSync(join(tmpdir(), "phreshos-client-package-"))
 const cache = join(temporary, "npm-cache")
+const corePackage = process.env.PHRESHOS_CORE_PACKAGE ?? `@phreshos/core@${manifest.devDependencies["@phreshos/core"]}`
 
 assert.equal(
   manifest.peerDependencies["@phreshos/core"],
@@ -59,7 +60,7 @@ try {
       "--no-fund",
       "--no-package-lock",
       archive,
-      `@phreshos/core@${manifest.devDependencies["@phreshos/core"]}`
+      corePackage
     ],
     {
       cwd: consumer,
@@ -78,13 +79,13 @@ const parent = { postMessage: message => messages.push(message) }
 globalThis.window = { parent, addEventListener() {} }
 
 const sdk = await import("@phreshos/client")
-const { ClientEndpoint, ClientService, Endpoint, Process, Program, ServerEndpoint, ServerService, Service, context, desktop, system } = sdk
+const { context, desktop, system } = sdk
+const { ClientEndpoint, ClientService, Endpoint, Process, Program, ServerEndpoint, ServerService, Service } = core
 
-assert.equal(Program, core.Program)
-assert.equal(Process, core.Process)
-assert.equal(Endpoint, core.Endpoint)
-assert.equal(ServerEndpoint, core.ServerEndpoint)
-assert.equal(ClientEndpoint, core.ClientEndpoint)
+assert.deepEqual(Object.keys(sdk).sort(), ["context", "desktop", "system"])
+for (const shared of ["Program", "Process", "Endpoint", "ServerEndpoint", "ClientEndpoint", "Service", "ServerService", "ClientService"]) {
+  assert.equal(shared in sdk, false)
+}
 assert.equal("current" in sdk, false)
 assert.equal(typeof context.process, "function")
 assert.equal(typeof context.name, "function")
@@ -145,14 +146,17 @@ assert.equal(messages.length, 0)
 
   writeFileSync(
     join(consumer, "consumer.ts"),
-    `import { context, desktop, system, ClientEndpoint, ServerEndpoint, type Appearance, type ClientService, type Desktop, type DesktopPreferences, type DesktopSurfaceSnapshot, type Permission, type ServerService, type SystemUploads, type Upload } from "@phreshos/client"
+    `import { context, desktop, system } from "@phreshos/client"
+import { ClientEndpoint, ServerEndpoint, type Appearance, type ClientService, type Desktop, type DesktopPreferences, type DesktopSurfaceSnapshot, type Permission, type Process, type ServerService, type ShellEvent, type SystemUploads, type Upload, type Window } from "@phreshos/core"
 // @ts-expect-error the runtime object is named context
 import { current } from "@phreshos/client"
+// @ts-expect-error shared domains are imported from Core, not republished by an environment SDK
+import { Program } from "@phreshos/client"
 
 type CounterEvents = { change: number }
 
 const appearance: Promise<Appearance> = system.appearance.snapshot()
-const shell: AsyncGenerator<import("@phreshos/client").ShellEvent, void, void> = system.shell("printf hello", { signal: new AbortController().signal })
+const shell: AsyncGenerator<ShellEvent, void, void> = system.shell("printf hello", { signal: new AbortController().signal })
 const uploads: SystemUploads = system.uploads
 const uploadsPath: Promise<string> = uploads.path()
 const upload: Promise<Upload> = uploads.write("hello")
@@ -171,7 +175,7 @@ const counterAnswer: Promise<number> = counter.ask<number>("value")
 const serviceRole: Promise<boolean> = context.isService()
 const processName: Promise<string | null> = context.name()
 const currentProcess = await context.process()
-const currentWindow: import("@phreshos/client").Window = context.window
+const currentWindow: Window = context.window
 const sharedProcess: import("@phreshos/core").Process = currentProcess
 const program = await context.program()
 const hasAgent: boolean = program.hasAgent
@@ -213,7 +217,7 @@ void context.process().then(process => {
   void client
 })
 void context.program().then(program => {
-  const shared: Promise<import("@phreshos/client").Process> = program.process.findOrCreate({
+  const shared: Promise<Process> = program.process.findOrCreate({
     name: "shared-server",
     server: { service: true },
     client: false

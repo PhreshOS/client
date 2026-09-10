@@ -1,6 +1,5 @@
 import type {
   ClientContext as CoreClientContext,
-  ContextCapture as CoreContextCapture,
   ContextEvents as CoreContextEvents,
   ContextMessage as CoreContextMessage,
   EndpointLifecycle,
@@ -34,18 +33,15 @@ import wire from "./wire.js"
 import { contextPermissions } from "./permissions.js"
 
 /** The executing Process's canonical Server Endpoint handle. */
-export type ContextServer<Events extends object = {}, Fallback = unknown> = ServerEndpoint<Events, Fallback>
+type ContextServer<Events extends object = {}, Fallback = unknown> = ServerEndpoint<Events, Fallback>
 
 /** One value addressed to the current Client Endpoint, with a client-visible sender. */
-export type ContextMessage<Payload = unknown> = CoreContextMessage<Payload, Endpoint | null>
+type ContextMessage<Payload = unknown> = CoreContextMessage<Payload, Endpoint | null>
 
 /** Applies the client-visible sender envelope to known Context events. */
-export type ContextEvents<Events extends object> = CoreContextEvents<Events, Endpoint | null>
+type ContextEvents<Events extends object> = CoreContextEvents<Events, Endpoint | null>
 
-/** Every event observable through the current Client Endpoint Context. */
-export type ContextCapture<Events extends object = {}> = CoreContextCapture<Events, Endpoint | null>
-
-export type Context<Events extends object = {}> = CoreClientContext<Events>
+type Context<Events extends object = {}> = CoreClientContext<Events>
 
 const ServerEndpointBase = ServerEndpoint as unknown as new () => object
 const ClientEndpointBase = ClientEndpoint as unknown as new () => object
@@ -190,4 +186,4 @@ function contextMessage(value: unknown): ContextMessage {
 }
 
 /** Inbound events, owner hierarchy, and paired Server Endpoint for this Client runtime. */
-export const context: Context = new ClientContext()
+export const context: CoreClientContext = new ClientContext()
