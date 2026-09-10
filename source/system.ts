@@ -39,11 +39,6 @@ class ClientSystem implements CoreSystem {
   public readonly process: CoreSystemProcess = new SystemProcessHandle()
   public readonly uploads = uploads
 
-  public async forceCreateProgram(source: ProgramDefinition | string) {
-    const answer = await wire.request(["host-program-force-create", source]) as [ProgramRecord]
-    return program(answer[0])
-  }
-
   public service<Endpoint extends ServiceEndpoint>(key: ServiceAddress<Endpoint>): ServiceHandle<Endpoint, {}>
   public service<ServiceEvents extends object, Fallback = unknown>(key: ServiceAddress<"server">): ServerService<ServiceEvents, Fallback>
   public service<ServiceEvents extends object, Fallback = unknown>(key: ServiceAddress<"client">): ClientService<ServiceEvents, Fallback>
@@ -151,6 +146,11 @@ class SystemProgramHandle extends Events<SystemProgramEvents, never> implements 
 
   public async create(source: ProgramDefinition | string) {
     const answer = await wire.request(["host-program-create", source]) as [ProgramRecord]
+    return program(answer[0])
+  }
+
+  public async forceCreate(source: ProgramDefinition | string) {
+    const answer = await wire.request(["host-program-force-create", source]) as [ProgramRecord]
     return program(answer[0])
   }
 }

@@ -98,6 +98,8 @@ assert.equal(typeof context.server.waitReady, "function")
 assert.equal(typeof desktop.preferences.snapshot, "function")
 assert.equal(typeof desktop.preferences.update, "function")
 assert.equal(typeof system.appearance.snapshot, "function")
+assert.equal(typeof system.program.forceCreate, "function")
+assert.equal("forceCreateProgram" in system, false)
 assert.equal(typeof system.websocket, "function")
 assert.equal(typeof system.shell, "function")
 assert.equal(typeof system.uploads.write, "function")
@@ -147,7 +149,7 @@ assert.equal(messages.length, 0)
   writeFileSync(
     join(consumer, "consumer.ts"),
     `import { context, desktop, system } from "@phreshos/client"
-import { ClientEndpoint, ServerEndpoint, type Appearance, type ClientService, type Desktop, type DesktopPreferences, type DesktopSurfaceSnapshot, type Permission, type Process, type ServerService, type ShellEvent, type SystemUploads, type Upload, type Window } from "@phreshos/core"
+import { ClientEndpoint, ServerEndpoint, type Appearance, type ClientService, type Desktop, type DesktopPreferences, type DesktopSurfaceSnapshot, type Permission, type Process, type Program as CoreProgram, type ServerService, type ShellEvent, type SystemUploads, type Upload, type Window } from "@phreshos/core"
 // @ts-expect-error the runtime object is named context
 import { current } from "@phreshos/client"
 // @ts-expect-error shared domains are imported from Core, not republished by an environment SDK
@@ -169,6 +171,9 @@ const counter: ServerService<CounterEvents> = system.service<CounterEvents>({ pr
 const clientCounter: ClientService<CounterEvents> = system.service<CounterEvents>({ program: "counter", process: "main", endpoint: "client" })
 const inferredClientCounter: ClientService = system.service({ program: "counter", process: "main", endpoint: "client" })
 const exactCounter: ServerService = system.service({ process: "1f4b222c-25d7-4ba8-85e5-d5e59cfe0928", endpoint: "server" })
+const forcedProgram: Promise<CoreProgram> = system.program.forceCreate("./phresh.config.ts")
+// @ts-expect-error Program creation belongs to the Program capability
+system.forceCreateProgram("./phresh.config.ts")
 const counterStop = counter.subscribe("change", value => void value)
 const counterLifecycleStop = counter.lifecycle.subscribe("start", () => undefined)
 const counterAnswer: Promise<number> = counter.ask<number>("value")
