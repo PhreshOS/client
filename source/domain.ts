@@ -33,6 +33,7 @@ import {
   type ProgramProcessRunOptions as CoreProgramProcessRunOptions,
   type ServerTraffic as CoreServerTraffic,
   type Size,
+  type Storage,
   type TrafficMessage as CoreTrafficMessage,
   type TrafficCapture as CoreTrafficCapture,
   type TrafficEvents as CoreTrafficEvents,
@@ -44,7 +45,7 @@ import {
 import Events, { stream } from "./events.js"
 import Deadline from "./deadline.js"
 import HandleRegistry from "./handle-registry.js"
-import { area, sql, store, type Storage } from "./storage.js"
+import { area, sql, store } from "./storage.js"
 import startup from "./startup.js"
 import { programPermissions } from "./permissions.js"
 import wire from "./wire.js"
@@ -528,6 +529,8 @@ class WindowHandle extends Events {
   public async raise() { await wire.request(["raise", await this.target()]) }
 }
 
+const windowTargets = new WeakMap<object, WindowTarget>()
+
 class LocalWindowHandle implements LocalWindow {
   public constructor(private readonly target: WindowTarget, private readonly selected?: Transaction) {}
 
@@ -540,6 +543,14 @@ class LocalWindowHandle implements LocalWindow {
   public async move(position: Position) { await this.change("windowLocalMove", position) }
   public async resize(size: Size) { await this.change("windowLocalResize", size) }
   public async setGeometry(geometry: WindowGeometry) { await this.change("windowLocalGeometry", geometry) }
+  public async minimize(minimized = true) { await this.change("windowLocalMinimize", minimized) }
+  public async follow(window: CoreWindow) {
+    const target = windowTargets.get(window as object)
+    if (!target) throw new Error("Local Window follow requires a Window from this Client SDK")
+    await wire.request(["windowLocalFollow", await this.target(), await target(), this.selected])
+  }
+  public async unfollow() { await wire.request(["windowLocalUnfollow", await this.target(), this.selected]) }
+  public async raise() { await wire.request(["windowLocalRaise", await this.target()]) }
 
   private async change(operation: string, value?: unknown) {
     await wire.request([operation, await this.target(), value, this.selected])
@@ -710,7 +721,9 @@ function endpointHandle(owner: ProcessHandle, kind: "server" | "client", preferr
 }
 
 export function window(target: WindowTarget): Window {
-  return new WindowHandle(target) as unknown as Window
+  const handle = new WindowHandle(target)
+  windowTargets.set(handle, target)
+  return handle as unknown as Window
 }
 
 export function localWindow(target: WindowTarget): LocalWindow {

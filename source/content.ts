@@ -1,7 +1,9 @@
+import type { WritableContent } from "@phreshos/core"
+
 export type ContentBody = Blob | ReadableStream<Uint8Array>
 
 /** Converts one authored value into the browser body and metadata used by storage and serving. */
-export function content(value: unknown): { body: ContentBody, extension: string, type: string } {
+export function content(value: WritableContent): { body: ContentBody, extension: string, type: string } {
   const binary = "application/octet-stream"
 
   if (typeof File !== "undefined" && value instanceof File) {

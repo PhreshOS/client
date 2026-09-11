@@ -1,4 +1,4 @@
-import { isUploadFile, type SystemUploads, type Upload } from "@phreshos/core"
+import { isUploadFile, type FileStat, type SystemUploads, type Upload, type WritableContent } from "@phreshos/core"
 import { content } from "./content.js"
 import controlledStream from "./controlled-stream.js"
 import wire from "./wire.js"
@@ -11,7 +11,7 @@ class ClientUploads implements SystemUploads {
     return answer[0]
   }
 
-  public async write(value: unknown): Promise<Upload> {
+  public async write(value: WritableContent): Promise<Upload> {
     const source = content(value)
     const channel = new MessageChannel()
     const abort = () => channel.port1.postMessage("abort")
@@ -66,9 +66,9 @@ class ClientUploads implements SystemUploads {
     return JSON.parse(await this.text(file)) as Value
   }
 
-  public async stat(file: string): Promise<Upload | null> {
+  public async stat(file: string): Promise<FileStat | null> {
     requireFile(file)
-    const answer = await wire.request(["uploads", "stat", file]) as [Upload | null]
+    const answer = await wire.request(["uploads", "stat", file]) as [FileStat | null]
     return answer[0]
   }
 }

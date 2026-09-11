@@ -106,12 +106,16 @@ assert.equal(typeof system.uploads.write, "function")
 assert.equal(typeof system.uploads.path, "function")
 assert.equal(typeof system.uploads.stream, "function")
 assert.equal(typeof system.uploads.stat, "function")
+assert.equal(typeof system.storage.file, "function")
+assert.equal(typeof system.storage.navigate, "function")
 assert.equal("serve" in system, false)
 assert.equal(typeof desktop.surface.snapshot, "function")
 assert.equal("desktopPreferences" in system, false)
 assert.equal("pointer" in system, false)
 assert.equal(typeof context.localWindow.addSurface, "function")
 assert.equal(typeof context.localWindow.removeSurface, "function")
+assert.equal(typeof context.localWindow.minimize, "function")
+assert.equal(typeof context.localWindow.raise, "function")
 assert.equal(typeof context.localWindow.transaction, "function")
 assert.equal("subscribe" in context.localWindow, false)
 assert.equal(typeof context.permissions.get, "function")
@@ -149,7 +153,7 @@ assert.equal(messages.length, 0)
   writeFileSync(
     join(consumer, "consumer.ts"),
     `import { context, desktop, system } from "@phreshos/client"
-import { ClientEndpoint, ServerEndpoint, type Appearance, type ClientService, type Desktop, type DesktopPreferences, type DesktopSurfaceSnapshot, type Permission, type Process, type Program as CoreProgram, type ServerService, type ShellEvent, type SystemUploads, type Upload, type Window } from "@phreshos/core"
+import { ClientEndpoint, ServerEndpoint, type Appearance, type ClientService, type Desktop, type DesktopPreferences, type DesktopSurfaceSnapshot, type FileStat, type Permission, type Process, type Program as CoreProgram, type ServerService, type ShellEvent, type Storage, type StorageFile, type SystemUploads, type Upload, type Window, type WritableContent } from "@phreshos/core"
 // @ts-expect-error the runtime object is named context
 import { current } from "@phreshos/client"
 // @ts-expect-error shared domains are imported from Core, not republished by an environment SDK
@@ -162,7 +166,12 @@ const shell: AsyncGenerator<ShellEvent, void, void> = system.shell("printf hello
 const uploads: SystemUploads = system.uploads
 const uploadsPath: Promise<string> = uploads.path()
 const upload: Promise<Upload> = uploads.write("hello")
+const uploadStat: Promise<FileStat | null> = uploads.stat("00000000-0000-0000-0000-000000000000.txt")
+const uploadContent: WritableContent = new DataView(new ArrayBuffer(4))
 const uploadText: Promise<string> = uploads.text("00000000-0000-0000-0000-000000000000.txt")
+const storage: Storage = system.storage.navigate("Documents")
+const storageFile: StorageFile = storage.file("example.txt")
+const storageText: Promise<string> = storageFile.text()
 const preferences: Promise<DesktopPreferences> = desktop.preferences.snapshot()
 const updatePreferences: Promise<void> = desktop.preferences.update({ theme: "default", animations: false })
 const clientDesktop: Desktop = desktop
@@ -203,6 +212,10 @@ const desktopStop = desktop.surface.subscribe("resize", snapshot => void snapsho
 const windowStop = context.window.subscribe("move", position => void position.x)
 const windowPosition = context.window.position()
 const clientSurface: Promise<void> = context.localWindow.transaction({ easing: "ease-out", wait: true }).addSurface()
+const minimized: Promise<void> = context.localWindow.transaction({ duration: 120 }).minimize()
+const raised: Promise<void> = context.localWindow.raise()
+const followed: Promise<void> = context.localWindow.transaction({ duration: 120 }).follow(currentWindow)
+const unfollowed: Promise<void> = context.localWindow.unfollow()
 const localGeometry: Promise<void> = context.localWindow.transaction({ duration: 180 }).setGeometry({
   position: { x: 20, y: 20 },
   size: { width: 420, height: 280 }
