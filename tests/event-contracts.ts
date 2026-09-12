@@ -4,12 +4,12 @@ import { context } from "../source/main.js"
 context.server.lifecycle.subscribe("start", () => undefined)
 
 context.server.subscribe("unknown", message => void message)
-context.server.waitFor("unknown")
+context.server.wait("unknown")
 context.server.events("unknown")
 
 function declaredServer(server: ServerEndpoint<{ changed: number }>) {
   server.subscribe("changed", message => message.toFixed(0))
-  server.waitFor("changed")
+  server.wait("changed")
   server.events("changed")
   server.subscribe("unknown", message => void message)
 }

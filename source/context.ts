@@ -165,9 +165,11 @@ class ClientContext extends Events<ContextEvents<{}>, ContextMessage> implements
     return program(answer[0])
   }
 
-  public async option(name: string) {
-    const answer = await wire.request(["option", undefined, name]) as [string | undefined]
-    return answer[0]
+  public options<Options extends object = Readonly<Record<string, string>>>(): Promise<Readonly<Options>>
+  public options<Option extends string = string>(name: string): Promise<Option | undefined>
+  public async options(name?: string) {
+    const process = await owner()
+    return name === undefined ? process.options() : process.options(name)
   }
 
   public async stop() { await wire.request(["stop-current"]) }

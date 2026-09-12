@@ -109,7 +109,7 @@ assert.equal(typeof system.uploads.stat, "function")
 assert.equal(typeof system.storage.file, "function")
 assert.equal(typeof system.storage.navigate, "function")
 assert.equal("serve" in system, false)
-assert.equal(typeof desktop.surface.snapshot, "function")
+assert.equal(typeof desktop.viewport.snapshot, "function")
 assert.equal("desktopPreferences" in system, false)
 assert.equal("pointer" in system, false)
 assert.equal(typeof context.localWindow.addSurface, "function")
@@ -153,7 +153,7 @@ assert.equal(messages.length, 0)
   writeFileSync(
     join(consumer, "consumer.ts"),
     `import { context, desktop, system } from "@phreshos/client"
-import { ClientEndpoint, ServerEndpoint, type Appearance, type ClientService, type Desktop, type DesktopPreferences, type DesktopSurfaceSnapshot, type FileStat, type Permission, type Process, type Program as CoreProgram, type ServerService, type ShellEvent, type Storage, type StorageFile, type SystemUploads, type Upload, type Window, type WritableContent } from "@phreshos/core"
+import { ClientEndpoint, ServerEndpoint, type Appearance, type ClientService, type Desktop, type DesktopPreferences, type DesktopViewportSnapshot, type FileStat, type Permission, type Process, type Program as CoreProgram, type ServerService, type ShellEvent, type Storage, type StorageFile, type SystemUploads, type Upload, type Window, type WritableContent } from "@phreshos/core"
 // @ts-expect-error the runtime object is named context
 import { current } from "@phreshos/client"
 // @ts-expect-error shared domains are imported from Core, not republished by an environment SDK
@@ -175,7 +175,7 @@ const storageText: Promise<string> = storageFile.text()
 const preferences: Promise<DesktopPreferences> = desktop.preferences.snapshot()
 const updatePreferences: Promise<void> = desktop.preferences.update({ theme: "default", animations: false })
 const clientDesktop: Desktop = desktop
-const desktopSurface: Promise<DesktopSurfaceSnapshot> = desktop.surface.snapshot()
+const desktopViewport: Promise<DesktopViewportSnapshot> = desktop.viewport.snapshot()
 const counter: ServerService<CounterEvents> = system.service<CounterEvents>({ program: "counter", process: "main", endpoint: "server" })
 const clientCounter: ClientService<CounterEvents> = system.service<CounterEvents>({ program: "counter", process: "main", endpoint: "client" })
 const inferredClientCounter: ClientService = system.service({ program: "counter", process: "main", endpoint: "client" })
@@ -208,7 +208,7 @@ const timedPermission: Promise<Permission<"all">> = context.permissions.timeout(
 context.permissions.get("files")
 // @ts-expect-error a value-less permission accepts no string values
 context.permissions.request("all", ["read"])
-const desktopStop = desktop.surface.subscribe("resize", snapshot => void snapshot.size.width)
+const desktopStop = desktop.viewport.subscribe("resize", snapshot => void snapshot.size.width)
 const windowStop = context.window.subscribe("move", position => void position.x)
 const windowPosition = context.window.position()
 const clientSurface: Promise<void> = context.localWindow.transaction({ duration: 120, easing: "ease-out", wait: true }).addSurface()
@@ -250,7 +250,7 @@ void updatePreferences
 void upload
 void uploadText
 void clientDesktop
-void desktopSurface
+void desktopViewport
 void counter
 void clientCounter
 void inferredClientCounter
