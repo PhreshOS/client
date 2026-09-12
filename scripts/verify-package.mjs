@@ -211,12 +211,12 @@ context.permissions.request("all", ["read"])
 const desktopStop = desktop.surface.subscribe("resize", snapshot => void snapshot.size.width)
 const windowStop = context.window.subscribe("move", position => void position.x)
 const windowPosition = context.window.position()
-const clientSurface: Promise<void> = context.localWindow.transaction({ easing: "ease-out", wait: true }).addSurface()
-const minimized: Promise<void> = context.localWindow.transaction({ duration: 120 }).minimize()
+const clientSurface: Promise<void> = context.localWindow.transaction({ duration: 120, easing: "ease-out", wait: true }).addSurface()
+const minimized: Promise<void> = context.localWindow.transaction({ duration: 120, easing: "ease-out" }).minimize()
 const raised: Promise<void> = context.localWindow.raise()
-const followed: Promise<void> = context.localWindow.transaction({ duration: 120 }).follow(currentWindow)
+const followed: Promise<void> = context.localWindow.transaction({ duration: 120, easing: "ease-out" }).follow(currentWindow)
 const unfollowed: Promise<void> = context.localWindow.unfollow()
-const localGeometry: Promise<void> = context.localWindow.transaction({ duration: 180 }).setGeometry({
+const localGeometry: Promise<void> = context.localWindow.transaction({ duration: 180, easing: "ease-out" }).setGeometry({
   position: { x: 20, y: 20 },
   size: { width: 420, height: 280 }
 })

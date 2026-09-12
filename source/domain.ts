@@ -8,6 +8,7 @@ import {
   type AnswerCapture as CoreAnswerCapture,
   type AnswerMessage as CoreAnswerMessage,
   type AnswerOutcome,
+  type AppearanceTransaction,
   type AnswerSubscriber as CoreAnswerSubscriber,
   type AskCapture as CoreAskCapture,
   type AskMessage as CoreAskMessage,
@@ -40,7 +41,7 @@ import {
   type Window as CoreWindow,
   type WindowGeometry,
   type WindowState,
-  type Transaction
+  type WaitedTransaction
 } from "@phreshos/core"
 import Events, { stream } from "./events.js"
 import Deadline from "./deadline.js"
@@ -532,9 +533,12 @@ class WindowHandle extends Events {
 const windowTargets = new WeakMap<object, WindowTarget>()
 
 class LocalWindowHandle implements LocalWindow {
-  public constructor(private readonly target: WindowTarget, private readonly selected?: Transaction) {}
+  public constructor(
+    private readonly target: WindowTarget,
+    private readonly selected?: AppearanceTransaction | WaitedTransaction
+  ) {}
 
-  public transaction(transaction: Transaction): LocalWindowOperations {
+  public transaction(transaction: AppearanceTransaction | WaitedTransaction): LocalWindowOperations {
     return new LocalWindowHandle(this.target, transaction)
   }
 
