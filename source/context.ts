@@ -12,7 +12,6 @@ import {
   ServerEndpoint,
   ServerTrafficHandle,
   TrafficHandle,
-  bindEvents,
   endpointLifecycle,
   endpointEvents,
   process,
@@ -25,8 +24,6 @@ import {
   type Process,
   type ProcessRecord,
   type ProgramRecord,
-  type ServerTraffic,
-  type ClientTraffic,
 } from "./domain.js"
 import Events from "./events.js"
 import wire from "./wire.js"
@@ -43,20 +40,25 @@ type ContextEvents<Events extends object> = CoreContextEvents<Events, Endpoint |
 
 type Context<Events extends object = {}> = CoreClientContext<Events>
 
-const ServerEndpointBase = ServerEndpoint as unknown as new () => object
-const ClientEndpointBase = ClientEndpoint as unknown as new () => object
-
-class ContextServerHandle extends ServerEndpointBase {
-  public readonly traffic = new ServerTrafficHandle(null, "server") as unknown as ServerTraffic
-  public readonly lifecycle = endpointLifecycle(currentAddress, "server") as unknown as EndpointLifecycle
+class ContextServerHandle extends ServerEndpoint {
+  public readonly subscribe: ServerEndpoint["subscribe"]
+  public readonly wait: ServerEndpoint["wait"]
+  public readonly events: ServerEndpoint["events"]
+  public readonly traffic = new ServerTrafficHandle(null, "server")
+  public readonly lifecycle: EndpointLifecycle = endpointLifecycle(currentAddress, "server")
 
   public constructor(private readonly owner: () => Promise<Process>) {
     super()
-    bindEvents(this, endpointEvents(null, "server"))
+    const events = endpointEvents(null, "server")
+    this.subscribe = events.subscribe
+    this.wait = events.wait
+    this.events = events.events
   }
 
   public process() { return this.owner() }
-  public publish(event: string, payload: unknown = undefined) { wire.send("end-end", event, payload) }
+  public readonly publish: ServerEndpoint["publish"] = (event: string, payload: unknown = undefined) => {
+    wire.send("end-end", event, payload)
+  }
 
   public async exists() {
     const answer = await wire.request(["exists", "server"]) as [boolean]
@@ -104,20 +106,26 @@ function owner() {
   return ownerPromise
 }
 
-contextServer = new ContextServerHandle(owner) as unknown as ContextServer
+contextServer = new ContextServerHandle(owner)
 
-class ContextClientHandle extends ClientEndpointBase {
-  public readonly traffic = new TrafficHandle(null, "client") as unknown as ClientTraffic
-  public readonly lifecycle = endpointLifecycle(currentAddress, "client") as unknown as EndpointLifecycle
+class ContextClientHandle extends ClientEndpoint {
+  public readonly subscribe: ClientEndpoint["subscribe"]
+  public readonly wait: ClientEndpoint["wait"]
+  public readonly events: ClientEndpoint["events"]
+  public readonly traffic = new TrafficHandle(null, "client")
+  public readonly lifecycle: EndpointLifecycle = endpointLifecycle(currentAddress, "client")
   public readonly window = windowHandle(currentAddress)
 
   public constructor(private readonly owner: () => Promise<Process>) {
     super()
-    bindEvents(this, endpointEvents(null, "client"))
+    const events = endpointEvents(null, "client")
+    this.subscribe = events.subscribe
+    this.wait = events.wait
+    this.events = events.events
   }
 
   public process() { return this.owner() }
-  public publish(event: string, payload: unknown = undefined) {
+  public readonly publish: ClientEndpoint["publish"] = (event: string, payload: unknown = undefined) => {
     void wire.identity().then(identity => {
       wire.send("end-host", "send", { identity: identity.process, reference: identity.reference }, "client", event, payload)
     })
@@ -134,7 +142,7 @@ class ContextClientHandle extends ClientEndpointBase {
   public async waitReady(timeout?: number) { await wire.request(["wait-ready", undefined, "client"], timeout) }
 }
 
-contextClient = new ContextClientHandle(owner) as unknown as ClientEndpoint
+contextClient = new ContextClientHandle(owner)
 
 class ClientContext extends Events<ContextEvents<{}>, ContextMessage> implements Context {
   public readonly server = contextServer

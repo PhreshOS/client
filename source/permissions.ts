@@ -12,7 +12,7 @@ import wire from "./wire.js"
 
 export const defaultPermissionTimeout = 120_000
 
-/** Bind authoritative stored grants to one exact Program handle. */
+/** Bind authoritative permission state to one exact Program handle. */
 export function programPermissions(program: HandleAddress): ProgramPermissions {
   const operate = <Name extends PermissionName>(operation: "all" | "get" | "allows" | "set" | "delete", name?: Name, permission?: PermissionInput<Name>) => (
     wire.request(["program-permissions", program, operation, name, permission])
@@ -27,7 +27,7 @@ export function programPermissions(program: HandleAddress): ProgramPermissions {
   }
 }
 
-/** Stored grants and owner requests belonging to the current Client Endpoint. */
+/** Permission state and owner requests belonging to the current Client Endpoint. */
 export function contextPermissions(): ContextPermissions {
   const timed = (timeout: number): TimedContextPermissions => ({
     async request<Name extends PermissionName>(name: Name, permission: PermissionRequest<Name> = true) {

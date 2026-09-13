@@ -14,14 +14,11 @@ import HandleRegistry from "./handle-registry.js"
 import wire from "./wire.js"
 
 const handles = new HandleRegistry()
-const ServerServiceBase = CoreServerService as unknown as new () => object
-const ClientServiceBase = CoreClientService as unknown as new () => object
-
 class ServiceHandle {
   public readonly lifecycle: EndpointLifecycle
 
   public constructor(protected readonly key: ServiceKey) {
-    this.lifecycle = new Events(...serviceEvents(key, "lifecycle")) as unknown as EndpointLifecycle
+    this.lifecycle = new Events(...serviceEvents(key, "lifecycle"))
   }
 
   public publish(event: string, payload: unknown = undefined) {
@@ -38,7 +35,10 @@ class ServiceHandle {
   }
 }
 
-class ServerHandler extends ServerServiceBase {
+class ServerHandler extends CoreServerService {
+  public readonly subscribe: CoreServerService["subscribe"]
+  public readonly wait: CoreServerService["wait"]
+  public readonly events: CoreServerService["events"]
   public readonly lifecycle: EndpointLifecycle
   private readonly service: ServiceHandle
 
@@ -46,10 +46,13 @@ class ServerHandler extends ServerServiceBase {
     super()
     this.service = new ServiceHandle(key)
     this.lifecycle = this.service.lifecycle
-    bindEvents(this, new Events(...serviceEvents(key, "events")))
+    const events = new Events(...serviceEvents(key, "events"))
+    this.subscribe = events.subscribe
+    this.wait = events.wait
+    this.events = events.events
   }
 
-  public publish(event: string, payload: unknown = undefined) { this.service.publish(event, payload) }
+  public readonly publish = (event: string, payload: unknown = undefined) => { this.service.publish(event, payload) }
   public exists() { return this.service.exists() }
 
   public waitReady(timeout?: number) { return this.service.waitReady(timeout) }
@@ -77,7 +80,10 @@ class ServerHandler extends ServerServiceBase {
   }
 }
 
-class ClientHandler extends ClientServiceBase {
+class ClientHandler extends CoreClientService {
+  public readonly subscribe: CoreClientService["subscribe"]
+  public readonly wait: CoreClientService["wait"]
+  public readonly events: CoreClientService["events"]
   public readonly lifecycle: EndpointLifecycle
   private readonly service: ServiceHandle
 
@@ -85,10 +91,13 @@ class ClientHandler extends ClientServiceBase {
     super()
     this.service = new ServiceHandle(key)
     this.lifecycle = this.service.lifecycle
-    bindEvents(this, new Events(...serviceEvents(key, "events")))
+    const events = new Events(...serviceEvents(key, "events"))
+    this.subscribe = events.subscribe
+    this.wait = events.wait
+    this.events = events.events
   }
 
-  public publish(event: string, payload: unknown = undefined) { this.service.publish(event, payload) }
+  public readonly publish = (event: string, payload: unknown = undefined) => { this.service.publish(event, payload) }
   public exists() { return this.service.exists() }
   public waitReady(timeout?: number) { return this.service.waitReady(timeout) }
 }
@@ -96,19 +105,22 @@ class ClientHandler extends ClientServiceBase {
 export function prepareService<EventsMap extends object = {}, Fallback = unknown>(key: ServiceKey & { endpoint: "server" }): ServerService<EventsMap, Fallback>
 export function prepareService<EventsMap extends object = {}, Fallback = unknown>(key: ServiceKey & { endpoint: "client" }): ClientService<EventsMap, Fallback>
 export function prepareService(key: ServiceKey): Service
-export function prepareService(key: ServiceKey): unknown {
+export function prepareService(key: ServiceKey): Service {
   if (!isServiceKey(key)) throw new Error("A complete service key is required")
 
-  const normalized = Object.freeze({
+  const address = Object.freeze({
     ...(key.program === undefined ? {} : { program: key.program }),
-    process: key.process,
-    endpoint: key.endpoint
+    process: key.process
   })
   const identity = JSON.stringify([key.program ?? null, key.process, key.endpoint])
 
-  return handles.obtain(`service:${identity}`, () => normalized.endpoint === "server"
-    ? new ServerHandler(normalized as ServiceKey & { endpoint: "server" })
-    : new ClientHandler(normalized as ServiceKey & { endpoint: "client" })) as unknown as Service
+  if (key.endpoint === "server") {
+    const normalized = Object.freeze({ ...address, endpoint: "server" as const })
+    return handles.obtain<Service>(`service:${identity}`, () => new ServerHandler(normalized))
+  }
+
+  const normalized = Object.freeze({ ...address, endpoint: "client" as const })
+  return handles.obtain<Service>(`service:${identity}`, () => new ClientHandler(normalized))
 }
 
 function serviceEvents(key: ServiceKey, scope: "lifecycle" | "events") {
@@ -118,12 +130,4 @@ function serviceEvents(key: ServiceKey, scope: "lifecycle" | "events") {
       if (typeof event === "string") listener(event, payload)
     }, impossible)
   ] as const satisfies ConstructorParameters<typeof Events>
-}
-
-function bindEvents(target: object, events: Events) {
-  Object.assign(target, {
-    subscribe: events.subscribe.bind(events),
-    wait: events.wait.bind(events),
-    events: events.events.bind(events)
-  })
 }

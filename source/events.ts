@@ -1,4 +1,4 @@
-import type { Capture, Cleanup, EventOptions, Subscribable } from "@phreshos/core"
+import { subscribableDefinition, type Capture, type Cleanup, type EventOptions, type Subscribable, type SubscribableDefinition } from "@phreshos/core"
 
 export const defaultTimeout = 10_000
 
@@ -9,6 +9,8 @@ type Register<Message> = (listener: (message: Message) => unknown, impossible?: 
 
 /** SDK-owned waits, queues and callbacks over boundary forwarding state. */
 export default class Events<Vocabulary extends object = {}, Fallback = unknown> implements Subscribable<Vocabulary, Fallback> {
+  public declare readonly [subscribableDefinition]?: SubscribableDefinition<Vocabulary, Fallback>
+
   public constructor(
     private readonly listen: (event: string, listener: Listener, impossible?: Failure) => Cleanup,
     private readonly listenAll: (listener: EveryListener, impossible?: Failure) => Cleanup
