@@ -60,6 +60,7 @@ import Deadline from "./deadline.js"
 import HandleRegistry from "./handle-registry.js"
 import { area, sql, store } from "./storage.js"
 import startup from "./startup.js"
+import launch from "./launch.js"
 import { programPermissions } from "./permissions.js"
 import wire from "./wire.js"
 
@@ -134,6 +135,7 @@ class ProgramHandle extends CoreProgram {
   public readonly logs
   public readonly database
   public readonly startup
+  public readonly launch
   public readonly process: ProgramProcess
   public readonly permissions
   private record: ProgramRecord
@@ -149,6 +151,7 @@ class ProgramHandle extends CoreProgram {
     this.logs = sql("logs", this.address)
     this.database = sql("database", this.address)
     this.startup = startup(this.address)
+    this.launch = launch(this.address)
     this.permissions = programPermissions(this.address)
     this.process = new ProgramProcessHandle(this.address, record.reference)
 
@@ -192,11 +195,6 @@ class ProgramHandle extends CoreProgram {
     for await (const value of wire.stream(["install", this.address])) {
       yield programCommandChunk(value)
     }
-  }
-
-  public async fork(identity: string) {
-    const answer = await wire.request(["fork", this.address, identity]) as [ProgramRecord]
-    return program(answer[0])
   }
 
   public async *uninstall(everything = false) {
