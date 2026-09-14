@@ -36,6 +36,8 @@ import {
   type LocalWindowOperations,
   type Position,
   type ProgramCommandChunk,
+  type ProgramInstallOptions,
+  type ProgramUninstallOptions,
   type ProgramIconSize,
   type ProgramEvents,
   type ProgramProcess as CoreProgramProcess,
@@ -191,14 +193,14 @@ class ProgramHandle extends CoreProgram {
     return answer[0]
   }
 
-  public async *install() {
-    for await (const value of wire.stream(["install", this.address])) {
+  public async *install(options: ProgramInstallOptions = {}) {
+    for await (const value of wire.stream(["install", this.address, options])) {
       yield programCommandChunk(value)
     }
   }
 
-  public async *uninstall(everything = false) {
-    for await (const value of wire.stream(["uninstall", this.address, everything])) {
+  public async *uninstall(options: ProgramUninstallOptions = {}) {
+    for await (const value of wire.stream(["uninstall", this.address, options])) {
       yield programCommandChunk(value)
     }
   }

@@ -112,7 +112,7 @@ function systemProcessEvent(event: string, values: unknown[]): unknown {
 
 function systemProgramEvent(event: string, values: unknown[]): unknown {
   if (event === "create" || event === "forget" || event === "install") return program(values[1])
-  if (event === "uninstall") return { program: program(values[1]), everything: values[2] === true }
+  if (event === "uninstall") return { program: program(values[1]), purge: values[2] === true }
   return values[0]
 }
 
