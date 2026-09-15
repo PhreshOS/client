@@ -160,7 +160,7 @@ test("package contract", async () => {
     writeFileSync(
       join(consumer, "consumer.ts"),
       `import { context, desktop, system } from "@phreshos/client"
-  import { ClientEndpoint, ServerEndpoint, type Appearance, type ClientService, type Desktop, type DesktopPreferences, type DesktopViewportSnapshot, type FileStat, type Permission, type Process, type Program as CoreProgram, type ServerService, type ShellEvent, type Storage, type StorageFile, type SystemUploads, type Upload, type Window, type WritableContent } from "@phreshos/core"
+  import { ClientEndpoint, ServerEndpoint, type Appearance, type ClientService, type Connection, type Desktop, type DesktopPreferences, type DesktopViewportSnapshot, type FileStat, type Permission, type Process, type Program as CoreProgram, type ServerService, type ShellEvent, type Storage, type StorageFile, type SystemUploads, type Upload, type Window, type WritableContent } from "@phreshos/core"
   // @ts-expect-error the runtime object is named context
   import { current } from "@phreshos/client"
   // @ts-expect-error shared domains are imported from Core, not republished by an environment SDK
@@ -183,6 +183,7 @@ test("package contract", async () => {
   const updatePreferences: Promise<void> = desktop.preferences.update({ theme: "default", animations: false })
   const clientDesktop: Desktop = desktop
   const desktopViewport: Promise<DesktopViewportSnapshot> = desktop.viewport.snapshot()
+  const desktopConnection: Promise<Connection> = desktop.connection()
   const counter: ServerService<CounterEvents> = system.service<CounterEvents>({ program: "counter", process: "main", endpoint: "server" })
   const clientCounter: ClientService<CounterEvents> = system.service<CounterEvents>({ program: "counter", process: "main", endpoint: "client" })
   const inferredClientCounter: ClientService = system.service({ program: "counter", process: "main", endpoint: "client" })
@@ -242,7 +243,7 @@ test("package contract", async () => {
     void client
   })
   void context.program().then(program => {
-    const shared: Promise<Process> = program.process.findOrCreate({
+    const shared: Promise<Process> = program.findOrCreateProcess({
       name: "shared-server",
       server: { service: true },
       client: false
@@ -258,6 +259,7 @@ test("package contract", async () => {
   void uploadText
   void clientDesktop
   void desktopViewport
+  void desktopConnection
   void counter
   void clientCounter
   void inferredClientCounter
