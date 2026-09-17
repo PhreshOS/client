@@ -11,6 +11,7 @@ test("package contract", async () => {
   const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..")
   const temporary = mkdtempSync(join(tmpdir(), "phreshos-client-package-"))
   const cache = join(temporary, "npm-cache")
+  const coreCandidate = process.env.PHRESHOS_CORE_PACKAGE
   const corePackage = `@phreshos/core@${manifest.devDependencies["@phreshos/core"]}`
 
   assert.equal(
@@ -62,7 +63,7 @@ test("package contract", async () => {
         "--no-fund",
         "--no-package-lock",
         archive,
-        corePackage
+        coreCandidate ?? corePackage
       ],
       {
         cwd: consumer,
@@ -180,7 +181,9 @@ test("package contract", async () => {
   const storageFile: StorageFile = storage.file("example.txt")
   const storageText: Promise<string> = storageFile.text()
   const preferences: Promise<DesktopPreferences> = desktop.preferences.snapshot()
-  const updatePreferences: Promise<void> = desktop.preferences.update({ theme: "default", animations: false })
+  const desktopScale: Promise<number> = preferences.then(value => value.scale)
+  const updatePreferences: Promise<void> = desktop.preferences.update({ theme: "default", animations: false, scale: 1.25 })
+  const resetScale: Promise<void> = desktop.preferences.update({ scale: "default" })
   const clientDesktop: Desktop = desktop
   const desktopViewport: Promise<DesktopViewportSnapshot> = desktop.viewport.snapshot()
   const desktopConnection: Promise<Connection> = desktop.connection()
@@ -257,6 +260,8 @@ test("package contract", async () => {
   void updatePreferences
   void upload
   void uploadText
+  void desktopScale
+  void resetScale
   void clientDesktop
   void desktopViewport
   void desktopConnection
