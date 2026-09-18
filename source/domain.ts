@@ -478,6 +478,7 @@ class WindowHandle extends Events<WindowEvents, never> implements CoreWindow {
   }
 
   public async title() { return (await this.state()).title }
+  public async header() { return (await this.state()).header }
   public async position() { return (await this.state()).position }
   public async size() { return (await this.state()).size }
   public async minimized() { return (await this.state()).minimized }
@@ -490,6 +491,7 @@ class WindowHandle extends Events<WindowEvents, never> implements CoreWindow {
   public async minimize(minimized = true) { await wire.request(["minimize", await this.target(), minimized]) }
   public async maximize(maximized = true) { await wire.request(["maximize", await this.target(), maximized]) }
   public async changeTitle(title: string) { await wire.request(["changeTitle", await this.target(), title]) }
+  public async changeHeader(header: boolean) { await wire.request(["changeHeader", await this.target(), header]) }
   public async raise() { await wire.request(["raise", await this.target()]) }
 }
 
@@ -513,6 +515,7 @@ class LocalWindowHandle implements LocalWindow {
   public async minimize(minimized = true) { await this.change("windowLocalMinimize", minimized) }
   public async maximize(maximized = true) { await this.change("windowLocalMaximize", maximized) }
   public async changeTitle(title: string) { await wire.request(["windowLocalTitle", await this.target(), title]) }
+  public async changeHeader(header: boolean) { await wire.request(["windowLocalHeader", await this.target(), header]) }
   public async follow(window: CoreWindow) {
     const target = windowTargets.get(window as object)
     if (!target) throw new Error("Local Window follow requires a Window from this Client SDK")
@@ -549,7 +552,7 @@ function deferredScoped(route: string, target: WindowTarget, convert: (event: st
 }
 
 function windowEvent(event: string) {
-  return event === "move" || event === "resize" || event === "geometry" || event === "minimize" || event === "maximize" || event === "changeTitle" || event === "front"
+  return event === "move" || event === "resize" || event === "geometry" || event === "minimize" || event === "maximize" || event === "changeTitle" || event === "changeHeader" || event === "front"
 }
 
 function deferred(target: WindowTarget, register: (subject: string) => Cleanup, impossible?: (error: Error) => void): Cleanup {
