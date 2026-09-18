@@ -1,8 +1,11 @@
 import {
   parseShellEvent,
   parseSessionEndSnapshot,
+  execute as executeRequest,
   type Connection,
   type ClientService,
+  type ExecuteRequest,
+  type ExecuteResult,
   type ProgramDefinition,
   type ServerService,
   type ServiceKey,
@@ -48,6 +51,10 @@ class ClientSystem implements CoreSystem {
   public readonly session: SystemSession = new SystemSessionHandle()
   public readonly uploads = uploads
   public readonly network = network
+
+  public execute<Request extends ExecuteRequest>(request: Request): Promise<ExecuteResult<Request>> {
+    return executeRequest(this, request)
+  }
 
   public service<Endpoint extends ServiceEndpoint>(key: ServiceAddress<Endpoint>): ServiceHandle<Endpoint, {}>
   public service<ServiceEvents extends object, Fallback = unknown>(key: ServiceAddress<"server">): ServerService<ServiceEvents, Fallback>
