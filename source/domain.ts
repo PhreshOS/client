@@ -10,7 +10,6 @@ import {
   type AnswerCapture as CoreAnswerCapture,
   type AnswerMessage as CoreAnswerMessage,
   type AnswerOutcome,
-  type AppearanceTransaction,
   type AnswerSubscriber as CoreAnswerSubscriber,
   type AskCapture as CoreAskCapture,
   type AskMessage as CoreAskMessage,
@@ -32,8 +31,8 @@ import {
   type Launch,
   type ClientLaunch,
   type ServerLaunch,
-  type LocalWindow,
-  type LocalWindowOperations,
+  type WindowPresentation,
+  type WindowPresentationTransactionOperations,
   type Position,
   type ProgramCommandChunk,
   type ProgramInstallOptions,
@@ -52,8 +51,9 @@ import {
   type WindowGeometry,
   type WindowEvents,
   type WindowState,
+  type WindowFrame,
+  type WindowTransaction,
   type ProcessEvents,
-  type WaitedTransaction
 } from "@phreshos/core"
 import Events, { stream } from "./events.js"
 import Deadline from "./deadline.js"
@@ -394,13 +394,13 @@ class ServerEndpointHandle extends CoreServerEndpoint {
     this.events = events.events
   }
 
-  public async process() { return this.owner }
+  public async process() { await this.running(); return this.owner }
   public readonly publish: CoreServerEndpoint["publish"] = (event: string, payload: unknown = undefined) => {
     wire.send("end-host", "send", this.owner.address, "server", event, payload)
   }
 
-  public async exists() {
-    const answer = await wire.request(["exists", "server", this.owner.address]) as [boolean]
+  public async running() {
+    const answer = await wire.request(["running", "server", this.owner.address]) as [boolean]
     return answer[0]
   }
 
@@ -450,13 +450,13 @@ class ClientEndpointHandle extends CoreClientEndpoint {
     this.events = events.events
   }
 
-  public async process() { return this.owner }
+  public async process() { await this.running(); return this.owner }
   public readonly publish: CoreClientEndpoint["publish"] = (event: string, payload: unknown = undefined) => {
     wire.send("end-host", "send", this.owner.address, "client", event, payload)
   }
 
-  public async exists() {
-    const answer = await wire.request(["exists", "client", this.owner.address]) as [boolean]
+  public async running() {
+    const answer = await wire.request(["running", "client", this.owner.address]) as [boolean]
     return answer[0]
   }
 
@@ -479,6 +479,8 @@ class WindowHandle extends Events<WindowEvents, never> implements CoreWindow {
 
   public async title() { return (await this.state()).title }
   public async header() { return (await this.state()).header }
+  public async frame() { return (await this.state()).frame }
+  public async openingTransaction() { return (await this.state()).transaction }
   public async position() { return (await this.state()).position }
   public async size() { return (await this.state()).size }
   public async minimized() { return (await this.state()).minimized }
@@ -492,40 +494,67 @@ class WindowHandle extends Events<WindowEvents, never> implements CoreWindow {
   public async maximize(maximized = true) { await wire.request(["maximize", await this.target(), maximized]) }
   public async changeTitle(title: string) { await wire.request(["changeTitle", await this.target(), title]) }
   public async changeHeader(header: boolean) { await wire.request(["changeHeader", await this.target(), header]) }
+  public async changeFrame(frame: WindowFrame) { await wire.request(["changeFrame", await this.target(), frame]) }
+  public async changeOpeningTransaction(transaction: WindowTransaction) { await wire.request(["changeOpeningTransaction", await this.target(), transaction]) }
   public async raise() { await wire.request(["raise", await this.target()]) }
 }
 
-const windowTargets = new WeakMap<object, WindowTarget>()
-
-class LocalWindowHandle implements LocalWindow {
+class WindowPresentationHandle extends Events<WindowEvents, never> implements WindowPresentation {
   public constructor(
     private readonly target: WindowTarget,
-    private readonly selected?: AppearanceTransaction | WaitedTransaction
-  ) {}
-
-  public transaction(transaction: AppearanceTransaction | WaitedTransaction): LocalWindowOperations {
-    return new LocalWindowHandle(this.target, transaction)
+    private readonly selected?: Readonly<{ transaction: WindowTransaction, wait: boolean }>
+  ) {
+    super(
+      (event, listener, impossible) => {
+        if (!windowEvent(event)) {
+          impossible?.(new Error(`A Window presentation has no "${event}" event`))
+          return () => undefined
+        }
+        return wire.on("presentation", event, listener, null, impossible)
+      },
+      (listener, impossible) => wire.onAll("presentation", (event, ...values) => {
+        if (typeof event === "string") listener(event, values[0])
+      }, null, impossible)
+    )
   }
 
-  public async addSurface() { await this.change("windowLocalSurfaceAdd") }
-  public async removeSurface() { await this.change("windowLocalSurfaceRemove") }
-  public async move(position: Position) { await this.change("windowLocalMove", position) }
-  public async resize(size: Size) { await this.change("windowLocalResize", size) }
-  public async setGeometry(geometry: WindowGeometry) { await this.change("windowLocalGeometry", geometry) }
-  public async minimize(minimized = true) { await this.change("windowLocalMinimize", minimized) }
-  public async maximize(maximized = true) { await this.change("windowLocalMaximize", maximized) }
-  public async changeTitle(title: string) { await wire.request(["windowLocalTitle", await this.target(), title]) }
-  public async changeHeader(header: boolean) { await wire.request(["windowLocalHeader", await this.target(), header]) }
-  public async follow(window: CoreWindow) {
-    const target = windowTargets.get(window as object)
-    if (!target) throw new Error("Local Window follow requires a Window from this Client SDK")
-    await wire.request(["windowLocalFollow", await this.target(), await target(), this.selected])
+  public transaction(transaction: WindowTransaction): WindowPresentationTransactionOperations {
+    return new WindowPresentationHandle(this.target, { transaction, wait: false })
   }
-  public async unfollow() { await wire.request(["windowLocalUnfollow", await this.target(), this.selected]) }
-  public async raise() { await wire.request(["windowLocalRaise", await this.target()]) }
+
+  public transactionAndWait(transaction: WindowTransaction): WindowPresentationTransactionOperations {
+    return new WindowPresentationHandle(this.target, { transaction, wait: true })
+  }
+
+  public async title() { return await this.read("title") as string }
+  public async header() { return await this.read("header") as boolean }
+  public async frame() { return await this.read("frame") as WindowFrame }
+  public async position() { return await this.read("position") as Position }
+  public async size() { return await this.read("size") as Size }
+  public async minimized() { return await this.read("minimized") as boolean }
+  public async maximized() { return await this.read("maximized") as boolean }
+  public async front() { return await this.read("front") as boolean }
+  public async layer() { return await this.read("layer") as WindowState["layer"] }
+
+  public async move(position: Position) { await this.change("windowPresentationMove", position) }
+  public async resize(size: Size) { await this.change("windowPresentationResize", size) }
+  public async setGeometry(geometry: WindowGeometry) { await this.change("windowPresentationGeometry", geometry) }
+  public async minimize(minimized = true) { await this.change("windowPresentationMinimize", minimized) }
+  public async maximize(maximized = true) { await this.change("windowPresentationMaximize", maximized) }
+  public async changeTitle(title: string) { await this.change("windowPresentationTitle", title) }
+  public async changeHeader(header: boolean) { await this.change("windowPresentationHeader", header) }
+  public async changeFrame(frame: WindowFrame) { await this.change("windowPresentationFrame", frame) }
+  public async follow() { await this.change("windowPresentationFollow") }
+  public async unfollow() { await this.change("windowPresentationUnfollow") }
+  public async raise() { await this.change("windowPresentationRaise") }
 
   private async change(operation: string, value?: unknown) {
-    await wire.request([operation, await this.target(), value, this.selected])
+    await wire.request([operation, await this.target(), value, this.selected?.transaction, this.selected?.wait === true])
+  }
+
+  private async read(property: string) {
+    const answer = await wire.request(["windowPresentationRead", await this.target(), property]) as [unknown]
+    return answer[0]
   }
 }
 
@@ -552,7 +581,7 @@ function deferredScoped(route: string, target: WindowTarget, convert: (event: st
 }
 
 function windowEvent(event: string) {
-  return event === "move" || event === "resize" || event === "geometry" || event === "minimize" || event === "maximize" || event === "changeTitle" || event === "changeHeader" || event === "front"
+  return event === "move" || event === "resize" || event === "geometry" || event === "minimize" || event === "maximize" || event === "changeTitle" || event === "changeHeader" || event === "changeFrame" || event === "front"
 }
 
 function deferred(target: WindowTarget, register: (subject: string) => Cleanup, impossible?: (error: Error) => void): Cleanup {
@@ -564,7 +593,6 @@ function deferred(target: WindowTarget, register: (subject: string) => Cleanup, 
   }, error => {
     const failure = error instanceof Error ? error : new Error(String(error))
     if (active && impossible) impossible(failure)
-    else if (active) queueMicrotask(() => { throw failure })
   })
 
   return () => {
@@ -599,8 +627,14 @@ export function endpointEvents(target: HandleAddress | null, half: "server" | "c
 
 /** Start and stop transitions belonging directly to one permanent Endpoint. */
 export function endpointLifecycle(target: WindowTarget, half: "server" | "client") {
+  const resolved = () => target()
+  const viable = async () => {
+    const address = await resolved()
+    await wire.request(["running", half, address])
+    return address
+  }
   return new Events<EndpointLifecycleEvents, never>(
-    (event, listener, impossible) => deferred(target, subject => wire.on(
+    (event, listener, impossible) => deferred(impossible ? viable : resolved, subject => wire.on(
       "process-host",
       endpointLifecycleEvent(event),
       (...values) => {
@@ -610,7 +644,7 @@ export function endpointLifecycle(target: WindowTarget, half: "server" | "client
       subject,
       impossible
     ), impossible),
-    (listener, impossible) => deferred(target, subject => wire.onAll("process-host", (event, ...values) => {
+    (listener, impossible) => deferred(impossible ? viable : resolved, subject => wire.onAll("process-host", (event, ...values) => {
       if (event !== "endpointStart" && event !== "endpointStop") return
       const message = unscoped(subject, values)
       if (message?.[1] === half) listener(event === "endpointStart" ? "start" : "stop", undefined)
@@ -683,13 +717,11 @@ function endpointHandle(owner: ProcessHandle, kind: "server" | "client", preferr
 }
 
 export function window(target: WindowTarget): Window {
-  const handle = new WindowHandle(target)
-  windowTargets.set(handle, target)
-  return handle
+  return new WindowHandle(target)
 }
 
-export function localWindow(target: WindowTarget): LocalWindow {
-  return new LocalWindowHandle(target)
+export function presentation(target: WindowTarget): WindowPresentation {
+  return new WindowPresentationHandle(target)
 }
 
 /** Resolves an Endpoint reference through the Client Endpoint's global handle registry. */

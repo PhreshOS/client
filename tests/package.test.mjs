@@ -93,7 +93,7 @@ test("package contract", async () => {
   assert.equal(typeof context.process, "function")
   assert.equal(typeof context.name, "function")
   assert.equal(typeof context.window, "object")
-  assert.equal(typeof context.localWindow, "object")
+  assert.equal(typeof context.presentation, "object")
   assert.equal(typeof context.isService, "function")
   assert.equal("channel" in context, false)
   assert.equal(typeof context.server.isService, "function")
@@ -118,14 +118,14 @@ test("package contract", async () => {
   assert.equal(typeof desktop.viewport.snapshot, "function")
   assert.equal("desktopPreferences" in system, false)
   assert.equal("pointer" in system, false)
-  assert.equal(typeof context.localWindow.addSurface, "function")
-  assert.equal(typeof context.localWindow.removeSurface, "function")
-  assert.equal(typeof context.localWindow.minimize, "function")
-  assert.equal(typeof context.localWindow.maximize, "function")
-  assert.equal(typeof context.localWindow.changeTitle, "function")
-  assert.equal(typeof context.localWindow.raise, "function")
-  assert.equal(typeof context.localWindow.transaction, "function")
-  assert.equal("subscribe" in context.localWindow, false)
+  assert.equal(typeof context.presentation.changeFrame, "function")
+  assert.equal(typeof context.presentation.minimize, "function")
+  assert.equal(typeof context.presentation.maximize, "function")
+  assert.equal(typeof context.presentation.changeTitle, "function")
+  assert.equal(typeof context.presentation.raise, "function")
+  assert.equal(typeof context.presentation.transaction, "function")
+  assert.equal(typeof context.presentation.transactionAndWait, "function")
+  assert.equal(typeof context.presentation.subscribe, "function")
   assert.equal(typeof context.permissions.get, "function")
   assert.equal(typeof context.permissions.request, "function")
   assert.equal(typeof context.permissions.timeout, "function")
@@ -222,16 +222,16 @@ test("package contract", async () => {
   const desktopStop = desktop.viewport.subscribe("resize", snapshot => void snapshot.size.width)
   const windowStop = context.window.subscribe("move", position => void position.x)
   const windowPosition = context.window.position()
-  const clientSurface: Promise<void> = context.localWindow.transaction({ duration: 120, easing: "ease-out", wait: true }).addSurface()
-  const minimized: Promise<void> = context.localWindow.transaction({ duration: 120, easing: "ease-out" }).minimize()
-  const raised: Promise<void> = context.localWindow.raise()
-  const followed: Promise<void> = context.localWindow.transaction({ duration: 120, easing: "ease-out" }).follow(currentWindow)
-  const unfollowed: Promise<void> = context.localWindow.unfollow()
-  const localGeometry: Promise<void> = context.localWindow.transaction({ duration: 180, easing: "ease-out" }).setGeometry({
+  const clientFrame: Promise<void> = context.presentation.transactionAndWait({ duration: 120, easing: "ease-out" }).changeFrame(true)
+  const minimized: Promise<void> = context.presentation.transaction({ duration: 120, easing: "ease-out" }).minimize()
+  const raised: Promise<void> = context.presentation.raise()
+  const followed: Promise<void> = context.presentation.transaction({ duration: 120, easing: "ease-out" }).follow()
+  const unfollowed: Promise<void> = context.presentation.unfollow()
+  const localGeometry: Promise<void> = context.presentation.transaction({ duration: 180, easing: "ease-out" }).setGeometry({
     position: { x: 20, y: 20 },
     size: { width: 420, height: 280 }
   })
-  const geometry: Promise<void> = context.localWindow.setGeometry({
+  const geometry: Promise<void> = context.presentation.setGeometry({
     position: { x: "0/1", y: "0/1" },
     size: { width: "1/2", height: "1/2" }
   })
@@ -289,7 +289,7 @@ test("package contract", async () => {
   void desktopStop
   void windowStop
   void windowPosition
-  void clientSurface
+  void clientFrame
   void geometry
   void server
   `

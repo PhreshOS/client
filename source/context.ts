@@ -17,7 +17,7 @@ import {
   process,
   program,
   visibleEndpoint,
-  localWindow,
+  presentation,
   window as windowHandle,
   type Endpoint,
   type EndpointReference,
@@ -55,13 +55,13 @@ class ContextServerHandle extends ServerEndpoint {
     this.events = events.events
   }
 
-  public process() { return this.owner() }
+  public async process() { await this.running(); return this.owner() }
   public readonly publish: ServerEndpoint["publish"] = (event: string, payload: unknown = undefined) => {
     wire.send("end-end", event, payload)
   }
 
-  public async exists() {
-    const answer = await wire.request(["exists", "server"]) as [boolean]
+  public async running() {
+    const answer = await wire.request(["running", "server"]) as [boolean]
     return answer[0]
   }
 
@@ -124,15 +124,15 @@ class ContextClientHandle extends ClientEndpoint {
     this.events = events.events
   }
 
-  public process() { return this.owner() }
+  public async process() { await this.running(); return this.owner() }
   public readonly publish: ClientEndpoint["publish"] = (event: string, payload: unknown = undefined) => {
     void wire.identity().then(identity => {
       wire.send("end-host", "send", { identity: identity.process, reference: identity.reference }, "client", event, payload)
     })
   }
 
-  public async exists() {
-    const answer = await wire.request(["exists", "client"]) as [boolean]
+  public async running() {
+    const answer = await wire.request(["running", "client"]) as [boolean]
     return answer[0]
   }
 
@@ -147,7 +147,7 @@ contextClient = new ContextClientHandle(owner)
 class ClientContext extends Events<ContextEvents<{}>, ContextMessage> implements Context {
   public readonly server = contextServer
   public readonly window = contextClient.window
-  public readonly localWindow = localWindow(currentAddress)
+  public readonly presentation = presentation(currentAddress)
   public readonly permissions = contextPermissions()
 
   public constructor() {
