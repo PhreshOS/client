@@ -480,7 +480,7 @@ class WindowHandle extends Events<WindowEvents, never> implements CoreWindow {
   public async title() { return (await this.state()).title }
   public async header() { return (await this.state()).header }
   public async frame() { return (await this.state()).frame }
-  public async openingTransaction() { return (await this.state()).transaction }
+  public async transaction() { return (await this.state()).transaction }
   public async position() { return (await this.state()).position }
   public async size() { return (await this.state()).size }
   public async minimized() { return (await this.state()).minimized }
@@ -492,10 +492,10 @@ class WindowHandle extends Events<WindowEvents, never> implements CoreWindow {
   public async setGeometry(geometry: WindowGeometry) { await wire.request(["setGeometry", await this.target(), geometry]) }
   public async minimize(minimized = true) { await wire.request(["minimize", await this.target(), minimized]) }
   public async maximize(maximized = true) { await wire.request(["maximize", await this.target(), maximized]) }
-  public async changeTitle(title: string) { await wire.request(["changeTitle", await this.target(), title]) }
-  public async changeHeader(header: boolean) { await wire.request(["changeHeader", await this.target(), header]) }
-  public async changeFrame(frame: WindowFrame) { await wire.request(["changeFrame", await this.target(), frame]) }
-  public async changeOpeningTransaction(transaction: WindowTransaction) { await wire.request(["changeOpeningTransaction", await this.target(), transaction]) }
+  public async setTitle(title: string) { await wire.request(["setTitle", await this.target(), title]) }
+  public async setHeader(header: boolean) { await wire.request(["setHeader", await this.target(), header]) }
+  public async setFrame(frame: WindowFrame) { await wire.request(["setFrame", await this.target(), frame]) }
+  public async setTransaction(transaction: WindowTransaction) { await wire.request(["setTransaction", await this.target(), transaction]) }
   public async raise() { await wire.request(["raise", await this.target()]) }
 }
 
@@ -541,9 +541,9 @@ class WindowPresentationHandle extends Events<WindowEvents, never> implements Wi
   public async setGeometry(geometry: WindowGeometry) { await this.change("windowPresentationGeometry", geometry) }
   public async minimize(minimized = true) { await this.change("windowPresentationMinimize", minimized) }
   public async maximize(maximized = true) { await this.change("windowPresentationMaximize", maximized) }
-  public async changeTitle(title: string) { await this.change("windowPresentationTitle", title) }
-  public async changeHeader(header: boolean) { await this.change("windowPresentationHeader", header) }
-  public async changeFrame(frame: WindowFrame) { await this.change("windowPresentationFrame", frame) }
+  public async setTitle(title: string) { await this.change("windowPresentationTitle", title) }
+  public async setHeader(header: boolean) { await this.change("windowPresentationHeader", header) }
+  public async setFrame(frame: WindowFrame) { await this.change("windowPresentationFrame", frame) }
   public async follow() { await this.change("windowPresentationFollow") }
   public async unfollow() { await this.change("windowPresentationUnfollow") }
   public async raise() { await this.change("windowPresentationRaise") }
@@ -581,7 +581,7 @@ function deferredScoped(route: string, target: WindowTarget, convert: (event: st
 }
 
 function windowEvent(event: string) {
-  return event === "move" || event === "resize" || event === "geometry" || event === "minimize" || event === "maximize" || event === "changeTitle" || event === "changeHeader" || event === "changeFrame" || event === "front"
+  return event === "move" || event === "resize" || event === "minimize" || event === "maximize" || event === "changeTitle" || event === "changeHeader" || event === "changeFrame" || event === "changeTransaction" || event === "front"
 }
 
 function deferred(target: WindowTarget, register: (subject: string) => Cleanup, impossible?: (error: Error) => void): Cleanup {

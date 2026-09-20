@@ -8,7 +8,7 @@ import {
   type ExecuteResult,
   type ProgramDefinition,
   type ServerService,
-  type ServiceKey,
+  type ServiceAddress,
   type ShellOptions,
   type System as CoreSystem,
   type SystemConnection,
@@ -19,6 +19,8 @@ import {
   type SystemProgramEvents,
   type SystemSession,
   type SystemSessionEvents,
+  type SystemService,
+  type SystemServiceEvents,
   type Session,
   type WritableAppearance
 } from "@phreshos/core"
@@ -32,16 +34,6 @@ import { systemStorage } from "./storage.js"
 import network from "./network.js"
 import { connection, session } from "./authentication.js"
 
-type ServiceEndpoint = ServiceKey["endpoint"]
-
-type ServiceAddress<Endpoint extends ServiceEndpoint> = Omit<ServiceKey, "endpoint"> & Readonly<{
-  endpoint: Endpoint
-}>
-
-type ServiceHandle<Endpoint extends ServiceEndpoint, Events extends object, Fallback = unknown> = Endpoint extends "server"
-  ? ServerService<Events, Fallback>
-  : ClientService<Events, Fallback>
-
 class ClientSystem implements CoreSystem {
   public readonly storage = systemStorage()
   public readonly appearance: WritableAppearance = new ClientAppearance()
@@ -49,6 +41,7 @@ class ClientSystem implements CoreSystem {
   public readonly process: CoreSystemProcess = new SystemProcessHandle()
   public readonly connection: SystemConnection = new SystemConnectionHandle()
   public readonly session: SystemSession = new SystemSessionHandle()
+  public readonly service: SystemService = new SystemServiceHandle()
   public readonly uploads = uploads
   public readonly network = network
 
@@ -56,17 +49,38 @@ class ClientSystem implements CoreSystem {
     return executeRequest(this, request)
   }
 
-  public service<Endpoint extends ServiceEndpoint>(key: ServiceAddress<Endpoint>): ServiceHandle<Endpoint, {}>
-  public service<ServiceEvents extends object, Fallback = unknown>(key: ServiceAddress<"server">): ServerService<ServiceEvents, Fallback>
-  public service<ServiceEvents extends object, Fallback = unknown>(key: ServiceAddress<"client">): ClientService<ServiceEvents, Fallback>
-  public service(key: ServiceKey): unknown { return prepareService(key) }
-
   public async *shell(command: string, options: ShellOptions = {}) {
     const { signal, ...settings } = options
 
     for await (const event of wire.stream(["shell", command, settings], undefined, signal)) yield parseShellEvent(event)
   }
 
+}
+
+class SystemServiceHandle extends Events<SystemServiceEvents, never> implements SystemService {
+  public constructor() {
+    super(
+      (event, listener, impossible) => wire.on("host-service", event, (...values) => listener(prepareService(values[1] as ServiceAddress)), null, impossible),
+      observer => wire.onAll("host-service", (event, ...values) => {
+        if (typeof event === "string") observer(event, prepareService(values[1] as ServiceAddress))
+      })
+    )
+  }
+
+  public async list(): Promise<(ServerService | ClientService)[]> {
+    const [addresses] = await wire.request(["host-service-list"]) as [ServiceAddress[]]
+    return addresses.map(address => prepareService(address))
+  }
+
+  public async search(name: string): Promise<(ServerService | ClientService)[]> {
+    const [addresses] = await wire.request(["host-service-search", name]) as [ServiceAddress[]]
+    return addresses.map(address => prepareService(address))
+  }
+
+  public prepare<EventsMap extends object = {}, Fallback = unknown>(address: ServiceAddress<"server">): ServerService<EventsMap, Fallback>
+  public prepare<EventsMap extends object = {}, Fallback = unknown>(address: ServiceAddress<"client">): ClientService<EventsMap, Fallback>
+  public prepare(address: ServiceAddress): ServerService | ClientService
+  public prepare(address: ServiceAddress) { return prepareService(address) }
 }
 
 class SystemProgramHandle extends Events<SystemProgramEvents, never> implements CoreSystemProgram {

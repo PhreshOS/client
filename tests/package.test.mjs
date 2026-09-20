@@ -118,10 +118,10 @@ test("package contract", async () => {
   assert.equal(typeof desktop.viewport.snapshot, "function")
   assert.equal("desktopPreferences" in system, false)
   assert.equal("pointer" in system, false)
-  assert.equal(typeof context.presentation.changeFrame, "function")
+  assert.equal(typeof context.presentation.setFrame, "function")
   assert.equal(typeof context.presentation.minimize, "function")
   assert.equal(typeof context.presentation.maximize, "function")
-  assert.equal(typeof context.presentation.changeTitle, "function")
+  assert.equal(typeof context.presentation.setTitle, "function")
   assert.equal(typeof context.presentation.raise, "function")
   assert.equal(typeof context.presentation.transaction, "function")
   assert.equal(typeof context.presentation.transactionAndWait, "function")
@@ -129,20 +129,18 @@ test("package contract", async () => {
   assert.equal(typeof context.permissions.get, "function")
   assert.equal(typeof context.permissions.request, "function")
   assert.equal(typeof context.permissions.timeout, "function")
-  const service = system.service({ program: "counter", process: "main", endpoint: "server" })
-  const clientService = system.service({ program: "counter", process: "main", endpoint: "client" })
-  const exactService = system.service({ process: "1f4b222c-25d7-4ba8-85e5-d5e59cfe0928", endpoint: "server" })
-  assert.equal(service, system.service({ program: "counter", process: "main", endpoint: "server" }))
-  assert.equal(clientService, system.service({ program: "counter", process: "main", endpoint: "client" }))
-  assert.equal(exactService, system.service({ process: "1f4b222c-25d7-4ba8-85e5-d5e59cfe0928", endpoint: "server" }))
-  assert.throws(() => system.service({ process: "main", endpoint: "server" }), /complete service key/)
+  const service = system.service.prepare({ program: "counter", process: "main", endpoint: "server" })
+  const clientService = system.service.prepare({ program: "counter", process: "main", endpoint: "client" })
+  assert.equal(service, system.service.prepare({ program: "counter", process: "main", endpoint: "server" }))
+  assert.equal(clientService, system.service.prepare({ program: "counter", process: "main", endpoint: "client" }))
+  assert.throws(() => system.service.prepare({ process: "main", endpoint: "server" }), /complete Service address/)
   assert(service instanceof Service)
   assert(service instanceof ServerService)
   assert(clientService instanceof Service)
   assert(clientService instanceof ClientService)
-  assert.equal("program" in service, false)
-  assert.equal("endpoint" in service, false)
-  assert.equal(typeof service.exists, "function")
+  assert.deepEqual(service.address(), { program: "counter", process: "main", endpoint: "server" })
+  assert.equal(typeof service.available, "function")
+  assert.equal(typeof service.programMetadata, "function")
   assert.equal(typeof service.waitReady, "function")
   assert.equal(typeof clientService.waitReady, "function")
   assert.equal(typeof clientService.publish, "function")
@@ -187,15 +185,14 @@ test("package contract", async () => {
   const clientDesktop: Desktop = desktop
   const desktopViewport: Promise<DesktopViewportSnapshot> = desktop.viewport.snapshot()
   const desktopConnection: Promise<Connection> = desktop.connection()
-  const counter: ServerService<CounterEvents> = system.service<CounterEvents>({ program: "counter", process: "main", endpoint: "server" })
-  const clientCounter: ClientService<CounterEvents> = system.service<CounterEvents>({ program: "counter", process: "main", endpoint: "client" })
-  const inferredClientCounter: ClientService = system.service({ program: "counter", process: "main", endpoint: "client" })
-  const exactCounter: ServerService = system.service({ process: "1f4b222c-25d7-4ba8-85e5-d5e59cfe0928", endpoint: "server" })
+  const counter: ServerService<CounterEvents> = system.service.prepare<CounterEvents>({ program: "counter", process: "main", endpoint: "server" })
+  const clientCounter: ClientService<CounterEvents> = system.service.prepare<CounterEvents>({ program: "counter", process: "main", endpoint: "client" })
+  const inferredClientCounter: ClientService = system.service.prepare({ program: "counter", process: "main", endpoint: "client" })
   const forcedProgram: Promise<CoreProgram> = system.program.forceCreate("./phresh.config.ts")
   // @ts-expect-error Program creation belongs to the Program capability
   system.forceCreateProgram("./phresh.config.ts")
   const counterStop = counter.subscribe("change", value => void value)
-  const counterLifecycleStop = counter.lifecycle.subscribe("start", () => undefined)
+  const counterLifecycleStop = counter.lifecycle.subscribe("available", () => undefined)
   const counterAnswer: Promise<number> = counter.ask<number>("value")
   const serviceRole: Promise<boolean> = context.isService()
   const processName: Promise<string | null> = context.name()
@@ -222,18 +219,22 @@ test("package contract", async () => {
   const desktopStop = desktop.viewport.subscribe("resize", snapshot => void snapshot.size.width)
   const windowStop = context.window.subscribe("move", position => void position.x)
   const windowPosition = context.window.position()
-  const clientFrame: Promise<void> = context.presentation.transactionAndWait({ duration: 120, easing: "ease-out" }).changeFrame(true)
+  const clientFrame: Promise<void> = context.presentation.transactionAndWait({ duration: 120, easing: "ease-out" }).setFrame(true)
   const minimized: Promise<void> = context.presentation.transaction({ duration: 120, easing: "ease-out" }).minimize()
   const raised: Promise<void> = context.presentation.raise()
   const followed: Promise<void> = context.presentation.transaction({ duration: 120, easing: "ease-out" }).follow()
   const unfollowed: Promise<void> = context.presentation.unfollow()
   const localGeometry: Promise<void> = context.presentation.transaction({ duration: 180, easing: "ease-out" }).setGeometry({
-    position: { x: 20, y: 20 },
-    size: { width: 420, height: 280 }
+    x: 20,
+    y: 20,
+    width: 420,
+    height: 280
   })
   const geometry: Promise<void> = context.presentation.setGeometry({
-    position: { x: "0/1", y: "0/1" },
-    size: { width: "1/2", height: "1/2" }
+    x: "0/1",
+    y: "0/1",
+    width: "1/2",
+    height: "1/2"
   })
   const server: ServerEndpoint = context.server
   void context.process().then(process => {
@@ -268,7 +269,6 @@ test("package contract", async () => {
   void counter
   void clientCounter
   void inferredClientCounter
-  void exactCounter
   void counterStop
   void counterLifecycleStop
   void counterAnswer
