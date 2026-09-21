@@ -1,4 +1,4 @@
-import { parseAppearance, type Appearance, type AppearanceEvents, type WritableAppearance } from "@phreshos/core"
+import { parseAppearance, type AppearanceEvents, type AppearanceUpdate, type WritableAppearance } from "@phreshos/core"
 import Events from "./events.js"
 import wire from "./wire.js"
 
@@ -20,7 +20,7 @@ export default class ClientAppearance extends Events<AppearanceEvents, never> im
     return parseAppearance(appearance)
   }
 
-  public async update(appearance: Appearance) {
+  public async update(appearance: AppearanceUpdate) {
     await wire.request(["updateAppearance", appearance])
   }
 }

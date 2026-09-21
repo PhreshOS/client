@@ -141,6 +141,7 @@ test("package contract", async () => {
   assert.deepEqual(service.address(), { program: "counter", process: "main", endpoint: "server" })
   assert.equal(typeof service.available, "function")
   assert.equal(typeof service.programMetadata, "function")
+  assert.equal(typeof service.programIcon, "function")
   assert.equal(typeof service.waitReady, "function")
   assert.equal(typeof clientService.waitReady, "function")
   assert.equal(typeof clientService.publish, "function")
@@ -168,6 +169,7 @@ test("package contract", async () => {
   type CounterEvents = { change: number }
 
   const appearance: Promise<Appearance> = system.appearance.snapshot()
+  const appearanceUpdate: Promise<void> = system.appearance.update({ colors: { dark: { danger: "#ff0000" } } })
   const shell: AsyncGenerator<ShellEvent, void, void> = system.shell("printf hello", { signal: new AbortController().signal })
   const uploads: SystemUploads = system.uploads
   const uploadsPath: Promise<string> = uploads.path()
@@ -202,11 +204,17 @@ test("package contract", async () => {
   const program = await context.program()
   const hasAgent: boolean = program.hasAgent
   const agent: Promise<string | null> = program.agent()
+  const definition = program.definition()
+  const serviceMetadata = counter.programMetadata()
+  const serviceIcon = counter.programIcon("small")
   const storedPermission = program.permissions.get("all")
   const permissions = program.permissions.all()
   const storedAllows: Promise<boolean> = program.permissions.allows("network", ["https://api.example.com"])
-  const assignedPermission: Promise<void> = program.permissions.set("all", true)
-  const removedPermission: Promise<void> = program.permissions.delete("all")
+  const allowedPermission: Promise<void> = program.permissions.allow("all")
+  const deniedPermission: Promise<void> = program.permissions.deny("all")
+  const delegatedPermission: Promise<Permission<"all">> = program.permissions.request("all")
+  // @ts-expect-error Permission assignments are replaced or explicitly denied; they are never deleted.
+  program.permissions.delete("all")
   // @ts-expect-error permissions belong to the Program, never one Process
   currentProcess.permissions
   const effectiveAllows: Promise<boolean> = context.permissions.allows("network", ["https://api.example.com"])
@@ -281,8 +289,9 @@ test("package contract", async () => {
   void storedPermission
   void permissions
   void storedAllows
-  void assignedPermission
-  void removedPermission
+  void allowedPermission
+  void deniedPermission
+  void delegatedPermission
   void effectiveAllows
   void requestedPermission
   void timedPermission
