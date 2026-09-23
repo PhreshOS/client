@@ -34,6 +34,10 @@ import {
   type ClientLaunch,
   type ServerLaunch,
   type WindowPresentation,
+  type WindowMoveGesture,
+  type WindowMoveGestureStart,
+  type WindowPresentationSurface,
+  type WindowPresentationTransaction,
   type WindowPresentationTransactionOperations,
   type Position,
   type ProgramCommandChunk,
@@ -53,8 +57,6 @@ import {
   type WindowGeometry,
   type WindowEvents,
   type WindowState,
-  type WindowSurface,
-  type WindowTransaction,
   type ProcessEvents,
 } from "@phreshos/core"
 import Events, { stream } from "./events.js"
@@ -492,8 +494,6 @@ class WindowHandle extends Events<WindowEvents, never> implements CoreWindow {
 
   public async title() { return (await this.state()).title }
   public async header() { return (await this.state()).header }
-  public async surface() { return (await this.state()).surface }
-  public async transaction() { return (await this.state()).transaction }
   public async position() { return (await this.state()).position }
   public async size() { return (await this.state()).size }
   public async minimized() { return (await this.state()).minimized }
@@ -507,67 +507,71 @@ class WindowHandle extends Events<WindowEvents, never> implements CoreWindow {
   public async maximize(maximized = true) { await wire.request(["maximize", await this.target(), maximized]) }
   public async setTitle(title: string) { await wire.request(["setTitle", await this.target(), title]) }
   public async setHeader(header: boolean) { await wire.request(["setHeader", await this.target(), header]) }
-  public async setSurface(surface: WindowSurface) { await wire.request(["setSurface", await this.target(), surface]) }
-  public async setTransaction(transaction: WindowTransaction) { await wire.request(["setTransaction", await this.target(), transaction]) }
   public async raise() { await wire.request(["raise", await this.target()]) }
 }
 
-class WindowPresentationHandle extends Events<WindowEvents, never> implements WindowPresentation {
+class WindowPresentationHandle implements WindowPresentation {
   public constructor(
     private readonly target: WindowTarget,
-    private readonly selected?: Readonly<{ transaction: WindowTransaction, wait: boolean }>
-  ) {
-    super(
-      (event, listener, impossible) => {
-        if (!windowEvent(event)) {
-          impossible?.(new Error(`A Window presentation has no "${event}" event`))
-          return () => undefined
-        }
-        return wire.on("presentation", event, listener, null, impossible)
-      },
-      (listener, impossible) => wire.onAll("presentation", (event, ...values) => {
-        if (typeof event === "string") listener(event, values[0])
-      }, null, impossible)
-    )
-  }
+    private readonly selected?: Readonly<{ transaction?: WindowPresentationTransaction, wait: boolean }>
+  ) {}
 
-  public transaction(transaction: WindowTransaction): WindowPresentationTransactionOperations {
+  public transaction(transaction?: WindowPresentationTransaction): WindowPresentationTransactionOperations {
     return new WindowPresentationHandle(this.target, { transaction, wait: false })
   }
 
-  public transactionAndWait(transaction: WindowTransaction): WindowPresentationTransactionOperations {
+  public transactionAndWait(transaction?: WindowPresentationTransaction): WindowPresentationTransactionOperations {
     return new WindowPresentationHandle(this.target, { transaction, wait: true })
   }
 
-  public async title() { return await this.read("title") as string }
-  public async header() { return await this.read("header") as boolean }
-  public async surface() { return await this.read("surface") as WindowSurface }
-  public async position() { return await this.read("position") as Position }
-  public async size() { return await this.read("size") as Size }
-  public async minimized() { return await this.read("minimized") as boolean }
-  public async maximized() { return await this.read("maximized") as boolean }
-  public async front() { return await this.read("front") as boolean }
-  public async layer() { return await this.read("layer") as WindowState["layer"] }
+  public async layer() {
+    const answer = await wire.request(["windowPresentationLayer", await this.target()]) as [WindowState["layer"]]
+    return answer[0]
+  }
+
+  public beginMoveGesture(start: WindowMoveGestureStart): WindowMoveGesture {
+    return new WindowMoveGestureHandle(this.target(), start)
+  }
 
   public async move(position: Position) { await this.change("windowPresentationMove", position) }
   public async resize(size: Size) { await this.change("windowPresentationResize", size) }
   public async setGeometry(geometry: WindowGeometry) { await this.change("windowPresentationGeometry", geometry) }
-  public async minimize(minimized = true) { await this.change("windowPresentationMinimize", minimized) }
-  public async maximize(maximized = true) { await this.change("windowPresentationMaximize", maximized) }
-  public async setTitle(title: string) { await this.change("windowPresentationTitle", title) }
-  public async setHeader(header: boolean) { await this.change("windowPresentationHeader", header) }
-  public async setSurface(surface: WindowSurface) { await this.change("windowPresentationSurface", surface) }
-  public async follow() { await this.change("windowPresentationFollow") }
-  public async unfollow() { await this.change("windowPresentationUnfollow") }
+  public async setSurface(surface: WindowPresentationSurface) { await this.change("windowPresentationSurface", surface) }
   public async raise() { await this.change("windowPresentationRaise") }
 
   private async change(operation: string, value?: unknown) {
-    await wire.request([operation, await this.target(), value, this.selected?.transaction, this.selected?.wait === true])
+    await wire.request([operation, await this.target(), value, this.selected ?? null])
+  }
+}
+
+class WindowMoveGestureHandle implements WindowMoveGesture {
+  private readonly gesture = crypto.randomUUID()
+  private readonly address: Promise<HandleAddress>
+  public readonly ready: Promise<void>
+  public readonly finished: Promise<void>
+  private ended = false
+
+  public constructor(target: Promise<HandleAddress>, start: WindowMoveGestureStart) {
+    this.address = target
+    this.ready = target.then(async address => {
+      await wire.request(["windowPresentationMoveGestureBegin", address, this.gesture, start])
+    })
+    this.finished = this.ready.then(async () => {
+      await wire.request(["windowPresentationMoveGestureWait", await this.address, this.gesture])
+    })
+    // A gesture may be abandoned by document teardown before its owner can end
+    // it. The boundary still owns cleanup; this only prevents an unhandled rejection.
+    void this.finished.catch(() => undefined)
+    void this.finished.then(() => { this.ended = true }, () => { this.ended = true })
   }
 
-  private async read(property: string) {
-    const answer = await wire.request(["windowPresentationRead", await this.target(), property]) as [unknown]
-    return answer[0]
+  public cancel() {
+    if (this.ended) return
+    this.ended = true
+    void this.ready.then(async () => {
+      const address = await this.address
+      wire.send("end-host", "windowPresentationMoveGestureCancel", address, this.gesture)
+    }, () => undefined)
   }
 }
 
@@ -594,7 +598,7 @@ function deferredScoped(route: string, target: WindowTarget, convert: (event: st
 }
 
 function windowEvent(event: string) {
-  return event === "move" || event === "resize" || event === "minimize" || event === "maximize" || event === "changeTitle" || event === "changeHeader" || event === "changeSurface" || event === "changeTransaction" || event === "front"
+  return event === "move" || event === "resize" || event === "minimize" || event === "maximize" || event === "changeTitle" || event === "changeHeader" || event === "front"
 }
 
 function deferred(target: WindowTarget, register: (subject: string) => Cleanup, impossible?: (error: Error) => void): Cleanup {

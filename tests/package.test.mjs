@@ -121,14 +121,14 @@ test("package contract", async () => {
   assert.equal(typeof desktop.viewport.snapshot, "function")
   assert.equal("desktopPreferences" in system, false)
   assert.equal("pointer" in system, false)
+  assert.equal(typeof context.presentation.layer, "function")
   assert.equal(typeof context.presentation.setSurface, "function")
-  assert.equal(typeof context.presentation.minimize, "function")
-  assert.equal(typeof context.presentation.maximize, "function")
-  assert.equal(typeof context.presentation.setTitle, "function")
+  assert.equal(typeof context.presentation.setGeometry, "function")
   assert.equal(typeof context.presentation.raise, "function")
+  assert.equal(typeof context.presentation.beginMoveGesture, "function")
   assert.equal(typeof context.presentation.transaction, "function")
   assert.equal(typeof context.presentation.transactionAndWait, "function")
-  assert.equal(typeof context.presentation.subscribe, "function")
+  assert.equal("subscribe" in context.presentation, false)
   assert.equal(typeof context.permissions.get, "function")
   assert.equal(typeof context.permissions.request, "function")
   assert.equal(typeof context.permissions.timeout, "function")
@@ -232,11 +232,11 @@ test("package contract", async () => {
   const desktopStop = desktop.viewport.subscribe("resize", snapshot => void snapshot.size.width)
   const windowStop = context.window.subscribe("move", position => void position.x)
   const windowPosition = context.window.position()
+  const presentationLayer = context.presentation.layer()
+  const moveGesture = context.presentation.beginMoveGesture({ origin: { x: 0, y: 0 }, point: { x: 8, y: 8 } })
   const clientSurface: Promise<void> = context.presentation.transactionAndWait({ duration: 120, easing: "ease-out" }).setSurface(true)
-  const minimized: Promise<void> = context.presentation.transaction({ duration: 120, easing: "ease-out" }).minimize()
+  const removedClientSurface: Promise<void> = context.presentation.setSurface(false)
   const raised: Promise<void> = context.presentation.raise()
-  const followed: Promise<void> = context.presentation.transaction({ duration: 120, easing: "ease-out" }).follow()
-  const unfollowed: Promise<void> = context.presentation.unfollow()
   const localGeometry: Promise<void> = context.presentation.transaction({ duration: 180, easing: "ease-out" }).setGeometry({
     x: 20,
     y: 20,
@@ -249,6 +249,8 @@ test("package contract", async () => {
     width: "1/2",
     height: "1/2"
   })
+  void moveGesture.ready
+  void moveGesture.finished
   const server: ServerEndpoint = context.server
   void context.process().then(process => {
     const client: ClientEndpoint | null = process.client
@@ -303,7 +305,9 @@ test("package contract", async () => {
   void desktopStop
   void windowStop
   void windowPosition
+  void presentationLayer
   void clientSurface
+  void removedClientSurface
   void geometry
   void server
   `
