@@ -102,6 +102,9 @@ test("package contract", async () => {
   assert.equal(typeof desktop.preferences.update, "function")
   assert.equal(typeof system.appearance.snapshot, "function")
   assert.equal(typeof system.program.forceCreate, "function")
+  assert.equal(typeof system.authentication.state, "function")
+  assert.equal(typeof system.authentication.setCredentials, "function")
+  assert.equal(typeof system.authentication.signOutAllSessions, "function")
   assert.equal("forceCreateProgram" in system, false)
   assert.equal(typeof system.network.websocket, "function")
   assert.equal(typeof system.network.fetch, "function")
@@ -118,7 +121,7 @@ test("package contract", async () => {
   assert.equal(typeof desktop.viewport.snapshot, "function")
   assert.equal("desktopPreferences" in system, false)
   assert.equal("pointer" in system, false)
-  assert.equal(typeof context.presentation.setFrame, "function")
+  assert.equal(typeof context.presentation.setSurface, "function")
   assert.equal(typeof context.presentation.minimize, "function")
   assert.equal(typeof context.presentation.maximize, "function")
   assert.equal(typeof context.presentation.setTitle, "function")
@@ -170,6 +173,8 @@ test("package contract", async () => {
 
   const appearance: Promise<Appearance> = system.appearance.snapshot()
   const appearanceUpdate: Promise<void> = system.appearance.update({ colors: { dark: { danger: "#ff0000" } } })
+  const authenticationState: Promise<import("@phreshos/core").AuthenticationState> = system.authentication.state()
+  const authenticationConnections: Promise<Connection[]> = system.authentication.connections()
   const shell: AsyncGenerator<ShellEvent, void, void> = system.shell("printf hello", { signal: new AbortController().signal })
   const uploads: SystemUploads = system.uploads
   const uploadsPath: Promise<string> = uploads.path()
@@ -227,7 +232,7 @@ test("package contract", async () => {
   const desktopStop = desktop.viewport.subscribe("resize", snapshot => void snapshot.size.width)
   const windowStop = context.window.subscribe("move", position => void position.x)
   const windowPosition = context.window.position()
-  const clientFrame: Promise<void> = context.presentation.transactionAndWait({ duration: 120, easing: "ease-out" }).setFrame(true)
+  const clientSurface: Promise<void> = context.presentation.transactionAndWait({ duration: 120, easing: "ease-out" }).setSurface(true)
   const minimized: Promise<void> = context.presentation.transaction({ duration: 120, easing: "ease-out" }).minimize()
   const raised: Promise<void> = context.presentation.raise()
   const followed: Promise<void> = context.presentation.transaction({ duration: 120, easing: "ease-out" }).follow()
@@ -298,7 +303,7 @@ test("package contract", async () => {
   void desktopStop
   void windowStop
   void windowPosition
-  void clientFrame
+  void clientSurface
   void geometry
   void server
   `
