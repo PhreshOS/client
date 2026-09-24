@@ -27,7 +27,7 @@ import {
 } from "./domain.js"
 import Events from "./events.js"
 import wire from "./wire.js"
-import { programPermissions } from "./permissions.js"
+import { contextPermissions } from "./permissions.js"
 
 /** The executing Process's canonical Server Endpoint handle. */
 type ContextServer<Events extends object = {}, Fallback = unknown> = ServerEndpoint<Events, Fallback>
@@ -148,7 +148,7 @@ class ClientContext extends Events<ContextEvents<{}>, ContextMessage> implements
   public readonly server = contextServer
   public readonly window = contextClient.window
   public readonly presentation = presentation(currentAddress)
-  public readonly permissions = programPermissions()
+  public readonly permissions = contextPermissions()
 
   public constructor() {
     super(

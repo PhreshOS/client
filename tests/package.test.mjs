@@ -133,6 +133,10 @@ test("package contract", async () => {
   assert.equal(typeof context.permissions.get, "function")
   assert.equal(typeof context.permissions.request, "function")
   assert.equal(typeof context.permissions.timeout, "function")
+  assert.equal(typeof system.permissions.requests, "function")
+  assert.equal(typeof system.permissions.subscribe, "function")
+  assert.equal(typeof system.logs.query, "function")
+  assert.equal(typeof system.logs.subscribe, "function")
   const service = system.service.prepare({ program: "counter", process: "main", endpoint: "server" })
   const clientService = system.service.prepare({ program: "counter", process: "main", endpoint: "client" })
   assert.equal(service, system.service.prepare({ program: "counter", process: "main", endpoint: "server" }))
@@ -164,7 +168,7 @@ test("package contract", async () => {
     writeFileSync(
       join(consumer, "consumer.ts"),
       `import { context, desktop, system } from "@phreshos/client"
-  import { ClientEndpoint, ServerEndpoint, type Appearance, type ClientService, type Connection, type Desktop, type DesktopPreferences, type DesktopViewportSnapshot, type FileStat, type Permission, type Process, type Program as CoreProgram, type ServerService, type ShellEvent, type Storage, type StorageFile, type SystemUploads, type Upload, type Window, type WritableContent } from "@phreshos/core"
+  import { ClientEndpoint, ServerEndpoint, type Appearance, type ClientService, type Connection, type Desktop, type DesktopPreferences, type DesktopViewportSnapshot, type FileStat, type Permission, type PermissionRequest, type Process, type Program as CoreProgram, type ServerService, type ShellEvent, type Storage, type StorageFile, type SystemUploads, type Upload, type Window, type WritableContent } from "@phreshos/core"
   // @ts-expect-error the runtime object is named context
   import { current } from "@phreshos/client"
   // @ts-expect-error shared domains are imported from Core, not republished by an environment SDK
@@ -208,6 +212,10 @@ test("package contract", async () => {
   const currentWindow: Window = context.window
   const sharedProcess: import("@phreshos/core").Process = currentProcess
   const program = await context.program()
+  const systemLogRows: Promise<Record<string, unknown>[]> = system.logs.query("select * from logs where level = ?", ["error"])
+  const systemLogStop = system.logs.subscribe("log", record => void record.level)
+  const programLogRows: Promise<Record<string, unknown>[]> = program.logs.query("select * from logs where process = ?", ["main"])
+  const programLogStop = program.logs.subscribe("log", record => void record.source)
   const hasAgent: boolean = program.hasAgent
   const agent: Promise<string | null> = program.agent()
   const definition = program.definition()
@@ -218,7 +226,8 @@ test("package contract", async () => {
   const storedAllows: Promise<boolean> = program.permissions.allows("network", ["https://api.example.com"])
   const allowedPermission: Promise<void> = program.permissions.allow("all")
   const deniedPermission: Promise<void> = program.permissions.deny("all")
-  const delegatedPermission: Promise<Permission<"all">> = program.permissions.request("all")
+  // @ts-expect-error a Program permission handle makes owner decisions; only an Endpoint context creates requests
+  program.permissions.request("all")
   // @ts-expect-error Permission assignments are replaced or explicitly denied; they are never deleted.
   program.permissions.delete("all")
   // @ts-expect-error permissions belong to the Program, never one Process
@@ -226,6 +235,9 @@ test("package contract", async () => {
   const effectiveAllows: Promise<boolean> = context.permissions.allows("network", ["https://api.example.com"])
   const requestedPermission: Promise<Permission<"all">> = context.permissions.request("all", [])
   const timedPermission: Promise<Permission<"all">> = context.permissions.timeout(120_000).request("all")
+  const pendingPermissionRequests: Promise<PermissionRequest[]> = system.permissions.requests()
+  const permissionRequestStop = system.permissions.subscribe("permissionRequest", request => void request.from)
+  const permissionResolveStop = system.permissions.subscribe("permissionResolve", result => void result.permission)
   // @ts-expect-error permission names are closed by the Core catalog
   context.permissions.get("files")
   // @ts-expect-error a value-less permission accepts no string values
@@ -303,10 +315,13 @@ test("package contract", async () => {
   void storedAllows
   void allowedPermission
   void deniedPermission
-  void delegatedPermission
   void effectiveAllows
   void requestedPermission
   void timedPermission
+  void systemLogRows
+  void systemLogStop
+  void programLogRows
+  void programLogStop
   void desktopStop
   void windowStop
   void windowPosition

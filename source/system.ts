@@ -32,9 +32,10 @@ import { prepareService } from "./service.js"
 import { uploads } from "./uploads.js"
 import Events from "./events.js"
 import { exit, process, program, type ProcessRecord, type ProgramRecord } from "./domain.js"
-import { systemStorage } from "./storage.js"
+import { systemLogs, systemStorage } from "./storage.js"
 import network from "./network.js"
 import { connection, session } from "./authentication.js"
+import { systemPermissions } from "./permission-requests.js"
 
 class ClientSystem implements CoreSystem {
   public readonly storage = systemStorage()
@@ -42,6 +43,8 @@ class ClientSystem implements CoreSystem {
   public readonly program: CoreSystemProgram = new SystemProgramHandle()
   public readonly process: CoreSystemProcess = new SystemProcessHandle()
   public readonly authentication: SystemAuthentication = new SystemAuthenticationHandle()
+  public readonly permissions = systemPermissions
+  public readonly logs = systemLogs()
   public readonly service: SystemService = new SystemServiceHandle()
   public readonly uploads = uploads
   public readonly network = network
