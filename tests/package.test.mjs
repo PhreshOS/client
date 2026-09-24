@@ -124,6 +124,7 @@ test("package contract", async () => {
   assert.equal(typeof context.presentation.layer, "function")
   assert.equal(typeof context.presentation.setSurface, "function")
   assert.equal(typeof context.presentation.setGeometry, "function")
+  assert.equal(typeof context.presentation.setInteractive, "function")
   assert.equal(typeof context.presentation.raise, "function")
   assert.equal(typeof context.presentation.beginMoveGesture, "function")
   assert.equal(typeof context.presentation.transaction, "function")
@@ -236,6 +237,9 @@ test("package contract", async () => {
   const moveGesture = context.presentation.beginMoveGesture({ origin: { x: 0, y: 0 }, point: { x: 8, y: 8 } })
   const clientSurface: Promise<void> = context.presentation.transactionAndWait({ duration: 120, easing: "ease-out" }).setSurface(true)
   const removedClientSurface: Promise<void> = context.presentation.setSurface(false)
+  const interactive: Promise<void> = context.presentation.setInteractive(false)
+  // @ts-expect-error Interaction is immediate and is not a transacted operation.
+  context.presentation.transaction().setInteractive(false)
   const raised: Promise<void> = context.presentation.raise()
   const localGeometry: Promise<void> = context.presentation.transaction({ duration: 180, easing: "ease-out" }).setGeometry({
     x: 20,
@@ -251,6 +255,7 @@ test("package contract", async () => {
   })
   void moveGesture.ready
   void moveGesture.finished
+  void interactive
   const server: ServerEndpoint = context.server
   void context.process().then(process => {
     const client: ClientEndpoint | null = process.client

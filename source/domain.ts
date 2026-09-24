@@ -537,6 +537,7 @@ class WindowPresentationHandle implements WindowPresentation {
   public async resize(size: Size) { await this.change("windowPresentationResize", size) }
   public async setGeometry(geometry: WindowGeometry) { await this.change("windowPresentationGeometry", geometry) }
   public async setSurface(surface: WindowPresentationSurface) { await this.change("windowPresentationSurface", surface) }
+  public async setInteractive(interactive: boolean) { await this.change("windowPresentationInteractive", interactive) }
   public async raise() { await this.change("windowPresentationRaise") }
 
   private async change(operation: string, value?: unknown) {
