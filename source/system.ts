@@ -4,6 +4,8 @@ import {
   parseAuthenticationState,
   parsePermissions,
   parseSessionEndSnapshot,
+  parseSystemProgramListOptions,
+  parseSystemServiceListOptions,
   execute as executeRequest,
   type Connection,
   type ClientService,
@@ -22,7 +24,9 @@ import {
   type SystemProgram as CoreSystemProgram,
   type SystemProgramEvents,
   type SystemService,
+  type SystemServiceListOptions,
   type SystemServiceEvents,
+  type SystemProgramListOptions,
   type Session,
   type WritableAppearance
 } from "@phreshos/core"
@@ -71,13 +75,8 @@ class SystemServiceHandle extends Events<SystemServiceEvents, never> implements 
     )
   }
 
-  public async list(): Promise<(ServerService | ClientService)[]> {
-    const [addresses] = await wire.request(["host-service-list"]) as [ServiceAddress[]]
-    return addresses.map(address => prepareService(address))
-  }
-
-  public async search(name: string): Promise<(ServerService | ClientService)[]> {
-    const [addresses] = await wire.request(["host-service-search", name]) as [ServiceAddress[]]
+  public async list(options: SystemServiceListOptions = {}): Promise<(ServerService | ClientService)[]> {
+    const [addresses] = await wire.request(["host-service-list", parseSystemServiceListOptions(options)]) as [ServiceAddress[]]
     return addresses.map(address => prepareService(address))
   }
 
@@ -97,8 +96,8 @@ class SystemProgramHandle extends Events<SystemProgramEvents, never> implements 
     )
   }
 
-  public async list(onlyInstalled = false) {
-    const answer = await wire.request(["host-program-list", onlyInstalled]) as [ProgramRecord[]]
+  public async list(options: SystemProgramListOptions = {}) {
+    const answer = await wire.request(["host-program-list", parseSystemProgramListOptions(options)]) as [ProgramRecord[]]
     return answer[0].map(program)
   }
 
