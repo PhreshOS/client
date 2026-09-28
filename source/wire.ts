@@ -3,6 +3,7 @@ import Deadline from "./deadline.js"
 import type { HandleAddress } from "./domain.js"
 import { defaultTimeout } from "./events.js"
 import captureClientOutput from "./log.js"
+import { StreamRelay } from "@the-link/core"
 import { deserialize, serialize } from "@the-link/messagepack"
 
 type Handler = (...values: unknown[]) => unknown
@@ -38,6 +39,9 @@ class Wire {
   private readonly impossible = new Map<string, Failure>()
   private identityPromise: Promise<{ process: string, reference: string }> | null = null
 
+  /** Streams in messages cross as references; their chunks follow as boundary relay messages. */
+  private readonly relay = new StreamRelay(message => this.post(["boundary", "relay", ...message]))
+
   public constructor() {
     window.addEventListener("message", event => {
       if (event.source !== this.parent || !Array.isArray(event.data)) return
@@ -46,7 +50,7 @@ class Wire {
       if (!(bytes instanceof Uint8Array)) return
 
       let message: unknown
-      try { message = deserialize(bytes, attachments) }
+      try { message = deserialize(bytes, { attachments, streams: this.relay }) }
       catch { return }
       if (!Array.isArray(message) || typeof message[0] !== "string") return
 
@@ -54,6 +58,10 @@ class Wire {
 
       if (route === "boundary") {
         const [operation, ...rest] = values
+        if (operation === "relay") {
+          this.relay.receive(rest)
+          return
+        }
         if (operation === "impossible" && typeof rest[0] === "string" && typeof rest[1] === "string") {
           this.impossible.get(rest[0])?.(new Error(rest[1]))
           this.impossible.delete(rest[0])
@@ -231,7 +239,7 @@ class Wire {
     if (!this.parent) return
 
     const attachments = nativeAttachments(message, transfer)
-    const bytes = serialize(message, attachments)
+    const bytes = serialize(message, { attachments, streams: this.relay })
 
     this.parent.postMessage([bytes, ...attachments], "*", [bytes.buffer, ...transfer])
   }
