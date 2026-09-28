@@ -118,7 +118,9 @@ test("package contract", async () => {
   assert.equal(typeof system.storage.file, "function")
   assert.equal(typeof system.storage.navigate, "function")
   assert.equal("serve" in system, false)
-  assert.equal(typeof desktop.viewport.snapshot, "function")
+  assert.equal(typeof desktop.viewport.size, "function")
+  assert.equal(typeof desktop.viewport.offset, "function")
+  assert.equal(typeof desktop.viewport.move, "function")
   assert.equal("desktopPreferences" in system, false)
   assert.equal("pointer" in system, false)
   assert.equal(typeof context.presentation.layer, "function")
@@ -168,7 +170,7 @@ test("package contract", async () => {
     writeFileSync(
       join(consumer, "consumer.ts"),
       `import { context, desktop, system } from "@phreshos/client"
-  import { ClientEndpoint, ServerEndpoint, type Appearance, type ClientService, type Connection, type Desktop, type DesktopPreferences, type DesktopViewportSnapshot, type FileStat, type Permission, type PermissionRequest, type Process, type Program as CoreProgram, type ServerService, type ShellEvent, type Storage, type StorageFile, type SystemUploads, type Upload, type Window, type WritableContent } from "@phreshos/core"
+  import { ClientEndpoint, ServerEndpoint, type Appearance, type ClientService, type Connection, type Desktop, type DesktopPreferences, type DesktopOffset, type DesktopSize, type FileStat, type Permission, type PermissionRequest, type Process, type Program as CoreProgram, type ServerService, type ShellEvent, type Storage, type StorageFile, type SystemUploads, type Upload, type Window, type WritableContent } from "@phreshos/core"
   // @ts-expect-error the runtime object is named context
   import { current } from "@phreshos/client"
   // @ts-expect-error shared domains are imported from Core, not republished by an environment SDK
@@ -195,7 +197,9 @@ test("package contract", async () => {
   const updatePreferences: Promise<void> = desktop.preferences.update({ theme: "default", animations: false, scale: 1.25 })
   const resetScale: Promise<void> = desktop.preferences.update({ scale: "default" })
   const clientDesktop: Desktop = desktop
-  const desktopViewport: Promise<DesktopViewportSnapshot> = desktop.viewport.snapshot()
+  const desktopSize: Promise<DesktopSize> = desktop.viewport.size()
+  const desktopOffset: Promise<DesktopOffset> = desktop.viewport.offset()
+  const desktopMove: Promise<void> = desktop.viewport.move({ x: 1440, y: 0 })
   const desktopConnection: Promise<Connection> = desktop.connection()
   const counter: ServerService<CounterEvents> = system.service.prepare<CounterEvents>({ program: "counter", process: "main", endpoint: "server" })
   const clientCounter: ClientService<CounterEvents> = system.service.prepare<CounterEvents>({ program: "counter", process: "main", endpoint: "client" })
@@ -242,7 +246,8 @@ test("package contract", async () => {
   context.permissions.get("files")
   // @ts-expect-error a value-less permission accepts no string values
   context.permissions.request("all", ["read"])
-  const desktopStop = desktop.viewport.subscribe("resize", snapshot => void snapshot.size.width)
+  const desktopStop = desktop.viewport.subscribe("resize", size => void size.width)
+  const desktopMoveStop = desktop.viewport.subscribe("move", offset => void offset.x)
   const windowStop = context.window.subscribe("move", position => void position.x)
   const windowPosition = context.window.position()
   const presentationLayer = context.presentation.layer()
@@ -296,7 +301,9 @@ test("package contract", async () => {
   void desktopScale
   void resetScale
   void clientDesktop
-  void desktopViewport
+  void desktopSize
+  void desktopOffset
+  void desktopMove
   void desktopConnection
   void counter
   void clientCounter
@@ -323,6 +330,7 @@ test("package contract", async () => {
   void programLogRows
   void programLogStop
   void desktopStop
+  void desktopMoveStop
   void windowStop
   void windowPosition
   void presentationLayer
