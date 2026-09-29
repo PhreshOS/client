@@ -131,7 +131,12 @@ test("package contract", async () => {
   assert.equal(typeof context.presentation.beginMoveGesture, "function")
   assert.equal(typeof context.presentation.transaction, "function")
   assert.equal(typeof context.presentation.transactionAndWait, "function")
-  assert.equal("subscribe" in context.presentation, false)
+  assert.equal(typeof context.presentation.position, "function")
+  assert.equal(typeof context.presentation.size, "function")
+  assert.equal(typeof context.presentation.front, "function")
+  assert.equal(typeof context.presentation.interactive, "function")
+  assert.equal(typeof context.presentation.surface, "function")
+  assert.equal(typeof context.presentation.subscribe, "function")
   assert.equal(typeof context.permissions.get, "function")
   assert.equal(typeof context.permissions.request, "function")
   assert.equal(typeof context.permissions.timeout, "function")
@@ -264,12 +269,15 @@ test("package contract", async () => {
     width: 420,
     height: 280
   })
-  const geometry: Promise<void> = context.presentation.setGeometry({
-    x: "0/1",
-    y: "0/1",
-    width: "1/2",
-    height: "1/2"
-  })
+  const geometry: Promise<void> = context.presentation.setGeometry({ x: -360, y: -240, width: 720, height: 480 })
+  // @ts-expect-error The drawing is written in pixels; shares belong to the Window.
+  context.presentation.move({ x: "0/1", y: 0 })
+  const drawnWidth: Promise<number> = context.presentation.size().then(size => size.width)
+  const drawnFront: Promise<boolean> = context.presentation.front()
+  const presentationStop = context.presentation.subscribe("changeInteractive", interactive => void interactive)
+  void drawnWidth
+  void drawnFront
+  void presentationStop
   void moveGesture.ready
   void moveGesture.finished
   void interactive

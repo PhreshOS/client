@@ -36,6 +36,10 @@ import {
   type WindowPresentation,
   type WindowMoveGesture,
   type WindowMoveGestureStart,
+  type WindowPresentationEvents,
+  type WindowPresentationGeometry,
+  type WindowPresentationPosition,
+  type WindowPresentationSize,
   type WindowPresentationSurface,
   type WindowPresentationTransaction,
   type WindowPresentationTransactionOperations,
@@ -513,39 +517,83 @@ class WindowHandle extends Events<WindowEvents, never> implements CoreWindow {
   public async raise() { await wire.request(["raise", await this.target()]) }
 }
 
-class WindowPresentationHandle implements WindowPresentation {
+/** How the executing Client is drawn on its Desktop, as the Desktop answers it. */
+type WindowPresentationDrawing = Readonly<{
+  layer: WindowState["layer"]
+  position: WindowPresentationPosition
+  size: WindowPresentationSize
+  front: boolean
+  interactive: boolean
+  surface: WindowPresentationSurface
+}>
+
+/** Writes to the drawing, applied at once or on the transaction they were selected with. */
+class WindowPresentationWrites implements WindowPresentationTransactionOperations {
   public constructor(
     private readonly target: WindowTarget,
-    private readonly selected?: Readonly<{ transaction?: WindowPresentationTransaction, wait: boolean }>
+    private readonly selected: Readonly<{ transaction?: WindowPresentationTransaction, wait: boolean }> | null
   ) {}
 
+  public async move(position: WindowPresentationPosition) { await this.change("windowPresentationMove", position) }
+  public async resize(size: WindowPresentationSize) { await this.change("windowPresentationResize", size) }
+  public async setGeometry(geometry: WindowPresentationGeometry) { await this.change("windowPresentationGeometry", geometry) }
+  public async setSurface(surface: WindowPresentationSurface) { await this.change("windowPresentationSurface", surface) }
+
+  private async change(operation: string, value: unknown) {
+    await wire.request([operation, await this.target(), value, this.selected])
+  }
+}
+
+class WindowPresentationHandle extends Events<WindowPresentationEvents, never> implements WindowPresentation {
+  private readonly writes: WindowPresentationWrites
+
+  public constructor(private readonly target: WindowTarget) {
+    // Only this Client's own Desktop draws it, so its changes come from that Desktop alone.
+    super(
+      (event, listener, impossible) => {
+        if (!presentationEvent(event)) {
+          impossible?.(new Error(`A Window presentation has no "${event}" event`))
+          return () => undefined
+        }
+        return wire.on("host-presentation", event, value => listener(value), null, impossible)
+      },
+      (listener, impossible) => wire.onAll("host-presentation", (event, value) => {
+        if (typeof event === "string" && presentationEvent(event)) listener(event, value)
+      }, null, impossible)
+    )
+    this.writes = new WindowPresentationWrites(target, null)
+  }
+
   public transaction(transaction?: WindowPresentationTransaction): WindowPresentationTransactionOperations {
-    return new WindowPresentationHandle(this.target, { transaction, wait: false })
+    return new WindowPresentationWrites(this.target, { transaction, wait: false })
   }
 
   public transactionAndWait(transaction?: WindowPresentationTransaction): WindowPresentationTransactionOperations {
-    return new WindowPresentationHandle(this.target, { transaction, wait: true })
+    return new WindowPresentationWrites(this.target, { transaction, wait: true })
   }
 
-  public async layer() {
-    const answer = await wire.request(["windowPresentationLayer", await this.target()]) as [WindowState["layer"]]
+  private async drawing() {
+    const answer = await wire.request(["windowPresentation", await this.target()]) as [WindowPresentationDrawing]
     return answer[0]
   }
+
+  public async layer() { return (await this.drawing()).layer }
+  public async position() { return (await this.drawing()).position }
+  public async size() { return (await this.drawing()).size }
+  public async front() { return (await this.drawing()).front }
+  public async interactive() { return (await this.drawing()).interactive }
+  public async surface() { return (await this.drawing()).surface }
 
   public beginMoveGesture(start: WindowMoveGestureStart): WindowMoveGesture {
     return new WindowMoveGestureHandle(this.target(), start)
   }
 
-  public async move(position: Position) { await this.change("windowPresentationMove", position) }
-  public async resize(size: Size) { await this.change("windowPresentationResize", size) }
-  public async setGeometry(geometry: WindowGeometry) { await this.change("windowPresentationGeometry", geometry) }
-  public async setSurface(surface: WindowPresentationSurface) { await this.change("windowPresentationSurface", surface) }
-  public async setInteractive(interactive: boolean) { await this.change("windowPresentationInteractive", interactive) }
-  public async raise() { await this.change("windowPresentationRaise") }
-
-  private async change(operation: string, value?: unknown) {
-    await wire.request([operation, await this.target(), value, this.selected ?? null])
-  }
+  public move(position: WindowPresentationPosition) { return this.writes.move(position) }
+  public resize(size: WindowPresentationSize) { return this.writes.resize(size) }
+  public setGeometry(geometry: WindowPresentationGeometry) { return this.writes.setGeometry(geometry) }
+  public setSurface(surface: WindowPresentationSurface) { return this.writes.setSurface(surface) }
+  public async setInteractive(interactive: boolean) { await wire.request(["windowPresentationInteractive", await this.target(), interactive, null]) }
+  public async raise() { await wire.request(["windowPresentationRaise", await this.target(), undefined, null]) }
 }
 
 class WindowMoveGestureHandle implements WindowMoveGesture {
@@ -599,6 +647,10 @@ function deferredScoped(route: string, target: WindowTarget, convert: (event: st
       if (message) listener(event, convert(event, message))
     }, subject, impossible), impossible)
   ] as const satisfies ConstructorParameters<typeof Events>
+}
+
+function presentationEvent(event: string) {
+  return event === "move" || event === "resize" || event === "front" || event === "changeInteractive" || event === "changeSurface"
 }
 
 function windowEvent(event: string) {
