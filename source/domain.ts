@@ -33,16 +33,17 @@ import {
   type Launch,
   type ClientLaunch,
   type ServerLaunch,
-  type WindowPresentation,
-  type WindowMoveGesture,
-  type WindowMoveGestureStart,
-  type WindowPresentationEvents,
-  type WindowPresentationGeometry,
-  type WindowPresentationPosition,
-  type WindowPresentationSize,
-  type WindowPresentationSurface,
-  type WindowPresentationTransaction,
-  type WindowPresentationTransactionOperations,
+  type Presentation,
+  type PresentationMoveGesture,
+  type PresentationMoveGestureStart,
+  type PresentationEvents,
+  type PresentationGeometry,
+  type PresentationPosition,
+  type PresentationSize,
+  type PresentationState,
+  type PresentationSurface,
+  type PresentationTransaction,
+  type PresentationTransactionOperations,
   type Position,
   type ProgramCommandChunk,
   type ProgramInstallOptions,
@@ -517,42 +518,32 @@ class WindowHandle extends Events<WindowEvents, never> implements CoreWindow {
   public async raise() { await wire.request(["raise", await this.target()]) }
 }
 
-/** How the executing Client is drawn on its Desktop, as the Desktop answers it. */
-type WindowPresentationDrawing = Readonly<{
-  layer: WindowState["layer"]
-  position: WindowPresentationPosition
-  size: WindowPresentationSize
-  front: boolean
-  interactive: boolean
-  surface: WindowPresentationSurface
-}>
-
 /** Writes to the drawing, applied at once or on the transaction they were selected with. */
-class WindowPresentationWrites implements WindowPresentationTransactionOperations {
+class PresentationWrites implements PresentationTransactionOperations {
   public constructor(
     private readonly target: WindowTarget,
-    private readonly selected: Readonly<{ transaction?: WindowPresentationTransaction, wait: boolean }> | null
+    private readonly selected: Readonly<{ transaction?: PresentationTransaction, wait: boolean }> | null
   ) {}
 
-  public async move(position: WindowPresentationPosition) { await this.change("windowPresentationMove", position) }
-  public async resize(size: WindowPresentationSize) { await this.change("windowPresentationResize", size) }
-  public async setGeometry(geometry: WindowPresentationGeometry) { await this.change("windowPresentationGeometry", geometry) }
-  public async setSurface(surface: WindowPresentationSurface) { await this.change("windowPresentationSurface", surface) }
+  public async move(position: PresentationPosition) { await this.change("presentationMove", position) }
+  public async resize(size: PresentationSize) { await this.change("presentationResize", size) }
+  public async setGeometry(geometry: PresentationGeometry) { await this.change("presentationGeometry", geometry) }
+  public async setSurface(surface: PresentationSurface) { await this.change("presentationSurface", surface) }
 
   private async change(operation: string, value: unknown) {
     await wire.request([operation, await this.target(), value, this.selected])
   }
 }
 
-class WindowPresentationHandle extends Events<WindowPresentationEvents, never> implements WindowPresentation {
-  private readonly writes: WindowPresentationWrites
+class PresentationHandle extends Events<PresentationEvents, never> implements Presentation {
+  private readonly writes: PresentationWrites
 
   public constructor(private readonly target: WindowTarget) {
     // Only this Client's own Desktop draws it, so its changes come from that Desktop alone.
     super(
       (event, listener, impossible) => {
         if (!presentationEvent(event)) {
-          impossible?.(new Error(`A Window presentation has no "${event}" event`))
+          impossible?.(new Error(`A presentation has no "${event}" event`))
           return () => undefined
         }
         return wire.on("host-presentation", event, value => listener(value), null, impossible)
@@ -561,19 +552,19 @@ class WindowPresentationHandle extends Events<WindowPresentationEvents, never> i
         if (typeof event === "string" && presentationEvent(event)) listener(event, value)
       }, null, impossible)
     )
-    this.writes = new WindowPresentationWrites(target, null)
+    this.writes = new PresentationWrites(target, null)
   }
 
-  public transaction(transaction?: WindowPresentationTransaction): WindowPresentationTransactionOperations {
-    return new WindowPresentationWrites(this.target, { transaction, wait: false })
+  public transaction(transaction?: PresentationTransaction): PresentationTransactionOperations {
+    return new PresentationWrites(this.target, { transaction, wait: false })
   }
 
-  public transactionAndWait(transaction?: WindowPresentationTransaction): WindowPresentationTransactionOperations {
-    return new WindowPresentationWrites(this.target, { transaction, wait: true })
+  public transactionAndWait(transaction?: PresentationTransaction): PresentationTransactionOperations {
+    return new PresentationWrites(this.target, { transaction, wait: true })
   }
 
   private async drawing() {
-    const answer = await wire.request(["windowPresentation", await this.target()]) as [WindowPresentationDrawing]
+    const answer = await wire.request(["presentation", await this.target()]) as [PresentationState]
     return answer[0]
   }
 
@@ -584,32 +575,32 @@ class WindowPresentationHandle extends Events<WindowPresentationEvents, never> i
   public async interactive() { return (await this.drawing()).interactive }
   public async surface() { return (await this.drawing()).surface }
 
-  public beginMoveGesture(start: WindowMoveGestureStart): WindowMoveGesture {
-    return new WindowMoveGestureHandle(this.target(), start)
+  public beginMoveGesture(start: PresentationMoveGestureStart): PresentationMoveGesture {
+    return new PresentationMoveGestureHandle(this.target(), start)
   }
 
-  public move(position: WindowPresentationPosition) { return this.writes.move(position) }
-  public resize(size: WindowPresentationSize) { return this.writes.resize(size) }
-  public setGeometry(geometry: WindowPresentationGeometry) { return this.writes.setGeometry(geometry) }
-  public setSurface(surface: WindowPresentationSurface) { return this.writes.setSurface(surface) }
-  public async setInteractive(interactive: boolean) { await wire.request(["windowPresentationInteractive", await this.target(), interactive, null]) }
-  public async raise() { await wire.request(["windowPresentationRaise", await this.target(), undefined, null]) }
+  public move(position: PresentationPosition) { return this.writes.move(position) }
+  public resize(size: PresentationSize) { return this.writes.resize(size) }
+  public setGeometry(geometry: PresentationGeometry) { return this.writes.setGeometry(geometry) }
+  public setSurface(surface: PresentationSurface) { return this.writes.setSurface(surface) }
+  public async setInteractive(interactive: boolean) { await wire.request(["presentationInteractive", await this.target(), interactive, null]) }
+  public async raise() { await wire.request(["presentationRaise", await this.target(), undefined, null]) }
 }
 
-class WindowMoveGestureHandle implements WindowMoveGesture {
+class PresentationMoveGestureHandle implements PresentationMoveGesture {
   private readonly gesture = crypto.randomUUID()
   private readonly address: Promise<HandleAddress>
   public readonly ready: Promise<void>
   public readonly finished: Promise<void>
   private ended = false
 
-  public constructor(target: Promise<HandleAddress>, start: WindowMoveGestureStart) {
+  public constructor(target: Promise<HandleAddress>, start: PresentationMoveGestureStart) {
     this.address = target
     this.ready = target.then(async address => {
-      await wire.request(["windowPresentationMoveGestureBegin", address, this.gesture, start])
+      await wire.request(["presentationMoveGestureBegin", address, this.gesture, start])
     })
     this.finished = this.ready.then(async () => {
-      await wire.request(["windowPresentationMoveGestureWait", await this.address, this.gesture])
+      await wire.request(["presentationMoveGestureWait", await this.address, this.gesture])
     })
     // A gesture may be abandoned by document teardown before its owner can end
     // it. The boundary still owns cleanup; this only prevents an unhandled rejection.
@@ -622,7 +613,7 @@ class WindowMoveGestureHandle implements WindowMoveGesture {
     this.ended = true
     void this.ready.then(async () => {
       const address = await this.address
-      wire.send("end-host", "windowPresentationMoveGestureCancel", address, this.gesture)
+      wire.send("end-host", "presentationMoveGestureCancel", address, this.gesture)
     }, () => undefined)
   }
 }
@@ -799,8 +790,8 @@ export function window(target: WindowTarget): Window {
   return new WindowHandle(target)
 }
 
-export function presentation(target: WindowTarget): WindowPresentation {
-  return new WindowPresentationHandle(target)
+export function presentation(target: WindowTarget): Presentation {
+  return new PresentationHandle(target)
 }
 
 /** Resolves an Endpoint reference through the Client Endpoint's global handle registry. */
