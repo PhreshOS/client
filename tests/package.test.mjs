@@ -201,8 +201,8 @@ test("package contract", async () => {
   const storageText: Promise<string> = storageFile.text()
   const preferences: Promise<DesktopPreferences> = desktop.preferences.snapshot()
   const desktopScale: Promise<number> = preferences.then(value => value.scale)
-  const updatePreferences: Promise<void> = desktop.preferences.update({ theme: "default", animations: false, scale: 1.25 })
-  const resetScale: Promise<void> = desktop.preferences.update({ scale: "default" })
+  const updatePreferences: Promise<void> = desktop.preferences.update({ theme: "desktop", animations: false, scale: 1.25 })
+  const resetScale: Promise<void> = desktop.preferences.update({ scale: 1 })
   const clientDesktop: Desktop = desktop
   const desktopSize: Promise<DesktopSize> = desktop.viewport.size()
   const desktopOffset: Promise<DesktopOffset> = desktop.viewport.offset()
