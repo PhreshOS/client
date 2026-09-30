@@ -1,4 +1,4 @@
-import { parseAppearanceTransaction, type DesktopOffset, type DesktopSize, type DesktopViewportEvents, type DesktopViewportMove, type WritableDesktopViewportSource } from "@phreshos/core"
+import { parseTransaction, type DesktopOffset, type DesktopSize, type DesktopViewportEvents, type DesktopViewportMove, type WritableDesktopViewportSource } from "@phreshos/core"
 import Events from "../events.js"
 import wire from "../wire.js"
 
@@ -51,7 +51,7 @@ function createMove(value: unknown): DesktopViewportMove | null {
   if (!record(value)) return null
   const offset = createOffset(value.offset)
   if (!offset) return null
-  const transaction = value.transaction === null ? null : parseAppearanceTransaction(value.transaction)
+  const transaction = value.transaction === null ? null : parseTransaction(value.transaction)
   return Object.freeze({ offset, transaction })
 }
 
