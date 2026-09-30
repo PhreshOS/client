@@ -14,6 +14,7 @@ import {
   type ClientService,
   type ExecuteRequest,
   type ExecuteResult,
+  type IconSize,
   type ProgramDefinition,
   type ServerService,
   type ServiceAddress,
@@ -66,6 +67,11 @@ class ClientSystem implements CoreSystem {
   public async about() {
     const [about] = await wire.request(["about"]) as [unknown]
     return parseSystemAbout(about)
+  }
+
+  public async icon(size: IconSize = "medium") {
+    const [bytes] = await wire.request(["system-icon", size]) as [number[]]
+    return new Blob([Uint8Array.from(bytes)], { type: "image/png" })
   }
 
   public execute<Request extends ExecuteRequest>(request: Request): Promise<ExecuteResult<Request>> {

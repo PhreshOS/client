@@ -100,6 +100,8 @@ test("package contract", async () => {
   assert.equal(typeof context.server.waitReady, "function")
   assert.equal(typeof desktop.preferences.snapshot, "function")
   assert.equal(typeof desktop.preferences.update, "function")
+  assert.equal(typeof system.icon, "function")
+  assert.equal(typeof system.about, "function")
   assert.equal(typeof system.appearance.snapshot, "function")
   assert.equal(typeof system.program.forceCreate, "function")
   assert.equal(typeof system.authentication.state, "function")
@@ -254,7 +256,7 @@ test("package contract", async () => {
   // @ts-expect-error a value-less permission accepts no string values
   context.permissions.request("all", ["read"])
   const desktopStop = desktop.viewport.subscribe("resize", size => void size.width)
-  const desktopMoveStop = desktop.viewport.subscribe("move", offset => void offset.x)
+  const desktopMoveStop = desktop.viewport.subscribe("move", move => void move.offset.x)
   const planeWidth: Promise<number> = desktop.plane.size().then(size => size.width)
   const planeStop = desktop.plane.subscribe("resize", size => void size.height)
   void planeWidth

@@ -49,7 +49,7 @@ import {
   type ProgramCommandChunk,
   type ProgramInstallOptions,
   type ProgramUninstallOptions,
-  type ProgramIconSize,
+  type IconSize,
   type ProgramEvents,
   type ProgramProcessRunEvent as CoreProgramProcessRunEvent,
   type ProgramProcessRunOptions as CoreProgramProcessRunOptions,
@@ -179,7 +179,7 @@ class ProgramHandle extends CoreProgram {
     this.record = record
   }
 
-  public async icon(size: ProgramIconSize = "medium") {
+  public async icon(size: IconSize = "medium") {
     const answer = await wire.request(["icon", this.address, size]) as [number[]]
     return new Blob([Uint8Array.from(answer[0])], { type: "image/png" })
   }

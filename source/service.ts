@@ -7,7 +7,7 @@ import {
   type ServiceAddress,
   type ServiceLifecycle,
   type ServiceProgramMetadata,
-  type ProgramIconSize
+  type IconSize
 } from "@phreshos/core"
 import Deadline from "./deadline.js"
 import Events from "./events.js"
@@ -42,7 +42,7 @@ class ServiceHandle {
     return parseServiceProgramMetadata(value)
   }
 
-  public async programIcon(size: ProgramIconSize = "medium") {
+  public async programIcon(size: IconSize = "medium") {
     const [value] = await wire.request(["service-program-icon", this.serviceAddress, size]) as [unknown]
     return parseServiceProgramIcon(value)
   }
@@ -69,7 +69,7 @@ class ServerHandler extends CoreServerService {
   public address() { return this.serviceAddress }
   public available() { return this.service.available() }
   public programMetadata() { return this.service.programMetadata() }
-  public programIcon(size?: ProgramIconSize) { return this.service.programIcon(size) }
+  public programIcon(size?: IconSize) { return this.service.programIcon(size) }
 
   public waitReady(timeout?: number) { return this.service.waitReady(timeout) }
 
@@ -117,7 +117,7 @@ class ClientHandler extends CoreClientService {
   public address() { return this.serviceAddress }
   public available() { return this.service.available() }
   public programMetadata() { return this.service.programMetadata() }
-  public programIcon(size?: ProgramIconSize) { return this.service.programIcon(size) }
+  public programIcon(size?: IconSize) { return this.service.programIcon(size) }
   public waitReady(timeout?: number) { return this.service.waitReady(timeout) }
 }
 
