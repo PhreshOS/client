@@ -3,10 +3,12 @@ import { connection } from "../authentication.js"
 import wire from "../wire.js"
 import ClientPreferences from "./preferences.js"
 import ClientViewport from "./viewport.js"
+import ClientPlane from "./plane.js"
 
 /** Desktop access bound to the current Client Endpoint's Process boundary. */
 class ClientDesktop implements Desktop {
   public readonly viewport = new ClientViewport()
+  public readonly plane = new ClientPlane()
   public readonly preferences = new ClientPreferences()
 
   public async connection() {

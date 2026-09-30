@@ -40,6 +40,7 @@ import {
   type PresentationGeometry,
   type PresentationPosition,
   type PresentationSize,
+  type PresentationAnchor,
   type PresentationState,
   type PresentationSurface,
   type PresentationTransaction,
@@ -569,6 +570,7 @@ class PresentationHandle extends Events<PresentationEvents, never> implements Pr
   }
 
   public async layer() { return (await this.drawing()).layer }
+  public async anchor() { return (await this.drawing()).anchor }
   public async position() { return (await this.drawing()).position }
   public async size() { return (await this.drawing()).size }
   public async front() { return (await this.drawing()).front }
@@ -584,6 +586,7 @@ class PresentationHandle extends Events<PresentationEvents, never> implements Pr
   public setGeometry(geometry: PresentationGeometry) { return this.writes.setGeometry(geometry) }
   public setSurface(surface: PresentationSurface) { return this.writes.setSurface(surface) }
   public async setInteractive(interactive: boolean) { await wire.request(["presentationInteractive", await this.target(), interactive, null]) }
+  public async setAnchor(anchor: PresentationAnchor) { await wire.request(["presentationAnchor", await this.target(), anchor, null]) }
   public async raise() { await wire.request(["presentationRaise", await this.target(), undefined, null]) }
 }
 
@@ -641,7 +644,7 @@ function deferredScoped(route: string, target: WindowTarget, convert: (event: st
 }
 
 function presentationEvent(event: string) {
-  return event === "move" || event === "resize" || event === "front" || event === "changeInteractive" || event === "changeSurface"
+  return event === "move" || event === "resize" || event === "front" || event === "changeInteractive" || event === "changeSurface" || event === "changeAnchor"
 }
 
 function windowEvent(event: string) {

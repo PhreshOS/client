@@ -127,6 +127,8 @@ test("package contract", async () => {
   assert.equal(typeof context.presentation.setSurface, "function")
   assert.equal(typeof context.presentation.setGeometry, "function")
   assert.equal(typeof context.presentation.setInteractive, "function")
+  assert.equal(typeof context.presentation.setAnchor, "function")
+  assert.equal(typeof context.presentation.anchor, "function")
   assert.equal(typeof context.presentation.raise, "function")
   assert.equal(typeof context.presentation.beginMoveGesture, "function")
   assert.equal(typeof context.presentation.transaction, "function")
@@ -253,6 +255,10 @@ test("package contract", async () => {
   context.permissions.request("all", ["read"])
   const desktopStop = desktop.viewport.subscribe("resize", size => void size.width)
   const desktopMoveStop = desktop.viewport.subscribe("move", offset => void offset.x)
+  const planeWidth: Promise<number> = desktop.plane.size().then(size => size.width)
+  const planeStop = desktop.plane.subscribe("resize", size => void size.height)
+  void planeWidth
+  void planeStop
   const windowStop = context.window.subscribe("move", position => void position.x)
   const windowPosition = context.window.position()
   const presentationLayer = context.presentation.layer()
@@ -260,8 +266,11 @@ test("package contract", async () => {
   const clientSurface: Promise<void> = context.presentation.transactionAndWait({ duration: 120, easing: "ease-out" }).setSurface(true)
   const removedClientSurface: Promise<void> = context.presentation.setSurface(false)
   const interactive: Promise<void> = context.presentation.setInteractive(false)
+  const anchored: Promise<void> = context.presentation.setAnchor("plane")
   // @ts-expect-error Interaction is immediate and is not a transacted operation.
   context.presentation.transaction().setInteractive(false)
+  // @ts-expect-error Changing the anchor keeps the drawing where it is, so it is not a transacted operation.
+  context.presentation.transaction().setAnchor("plane")
   const raised: Promise<void> = context.presentation.raise()
   const localGeometry: Promise<void> = context.presentation.transaction({ duration: 180, easing: "ease-out" }).setGeometry({
     x: 20,
@@ -281,6 +290,7 @@ test("package contract", async () => {
   void moveGesture.ready
   void moveGesture.finished
   void interactive
+  void anchored
   const server: ServerEndpoint = context.server
   void context.process().then(process => {
     const client: ClientEndpoint | null = process.client
