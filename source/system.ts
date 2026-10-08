@@ -15,6 +15,7 @@ import {
   type ExecuteRequest,
   type ExecuteResult,
   type IconSize,
+  type Launch,
   type ProgramDefinition,
   type ServerService,
   type ServiceAddress,
@@ -225,11 +226,12 @@ function systemProcessEvent(event: string, values: unknown[]): unknown {
 function systemProgramEvent(event: string, values: unknown[]): unknown {
   if (event === "create" || event === "forget" || event === "install") return program(values[1])
   if (event === "uninstall") return { program: program(values[1]), purge: values[2] === true }
-  if (event === "pinned") return { program: program(values[1]), pinned: values[2] === true }
-  if (event === "permissions") {
+  if (event === "pin") return { program: program(values[1]), pinned: values[2] === true }
+  if (event === "changePermissions") {
     const handle = program(values[1])
     return { program: handle, permissions: parsePermissions((values[1] as { permissions?: unknown }).permissions) }
   }
+  if (event === "changeStartup") return { program: program(values[1]), launch: values[2] as Launch | null }
   return values[0]
 }
 
