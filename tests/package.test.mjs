@@ -230,6 +230,8 @@ test("package contract", async () => {
   const programLogRows: Promise<Record<string, unknown>[]> = program.logs.query("select * from logs where process = ?", ["main"])
   const programLogStop = program.logs.subscribe("log", record => void record.source)
   const hasAgent: boolean = program.hasAgent
+  const programCategories: readonly string[] = program.categories
+  const declaredNetwork = program.declaredPermissions.network
   const agent: Promise<string | null> = program.agent()
   const definition = program.definition()
   const serviceMetadata = counter.programMetadata()
@@ -337,6 +339,8 @@ test("package contract", async () => {
   void processName
   void sharedProcess
   void hasAgent
+  void programCategories
+  void declaredNetwork
   void agent
   void storedPermission
   void permissions
