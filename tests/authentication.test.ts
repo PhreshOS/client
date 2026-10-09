@@ -16,7 +16,7 @@ beforeEach(() => {
   boundary.request.mockReset()
   boundary.request.mockImplementation(async (message: unknown[]) => {
     if (message[0] === "desktop-connection" || message[0] === "host-authentication-connection") {
-      return [{ identity: "connection-one", connected: true, session: null, connectedAt: new Date(0) }]
+      return [{ identity: "connection-one", connected: true, session: null, connectedAt: new Date(0), device: "Chrome on macOS" }]
     }
 
     throw new Error(`Unexpected request ${String(message[0])}`)
@@ -38,8 +38,8 @@ test("System Authentication owns public state, credentials, and both registries"
       username: { minimumLength: 1, maximumLength: 64 },
       password: { minimumLength: 8, maximumLength: 1024 }
     }]
-    if (message[0] === "host-authentication-connections") return [[{ identity: "connection-one", connected: true, session: null, connectedAt: new Date(0) }]]
-    if (message[0] === "host-authentication-sessions") return [[{ identity: "session-one", valid: true, createdAt: new Date(0) }]]
+    if (message[0] === "host-authentication-connections") return [[{ identity: "connection-one", connected: true, session: null, connectedAt: new Date(0), device: "Chrome on macOS" }]]
+    if (message[0] === "host-authentication-sessions") return [[{ identity: "session-one", valid: true, createdAt: new Date(0), device: null }]]
     if (message[0] === "host-authentication-set-credentials" || message[0] === "host-authentication-sign-out-all-sessions") return []
     throw new Error(`Unexpected request ${String(message[0])}`)
   })
