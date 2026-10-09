@@ -99,6 +99,7 @@ test("package contract", async () => {
   assert.equal(typeof context.server.isService, "function")
   assert.equal(typeof context.server.waitReady, "function")
   assert.equal(typeof desktop.preferences.snapshot, "function")
+  assert.equal(typeof desktop.preferences.resolve, "function")
   assert.equal(typeof desktop.preferences.update, "function")
   assert.equal(typeof system.icon, "function")
   assert.equal(typeof system.about, "function")
@@ -203,7 +204,8 @@ test("package contract", async () => {
   const storageText: Promise<string> = storageFile.text()
   const preferences: Promise<DesktopPreferences> = desktop.preferences.snapshot()
   const desktopScale: Promise<number> = preferences.then(value => value.scale)
-  const updatePreferences: Promise<void> = desktop.preferences.update({ theme: "desktop", animations: false, scale: 1.25 })
+  const resolvedTheme: Promise<"light" | "dark"> = desktop.preferences.resolve().then(value => value.theme)
+  const updatePreferences: Promise<void> = desktop.preferences.update({ theme: "browser", animations: false, scale: 1.25 })
   const resetScale: Promise<void> = desktop.preferences.update({ scale: 1 })
   const clientDesktop: Desktop = desktop
   const desktopSize: Promise<DesktopSize> = desktop.viewport.size()
@@ -318,6 +320,7 @@ test("package contract", async () => {
   void shell
 
   void preferences
+  void resolvedTheme
   void updatePreferences
   void upload
   void uploadText
