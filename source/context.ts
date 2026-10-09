@@ -1,4 +1,3 @@
-import { parseOpenTarget } from "@phreshos/core"
 import type {
   ClientContext as CoreClientContext,
   ContextEvents as CoreContextEvents,
@@ -179,15 +178,13 @@ class ClientContext extends Events<ContextEvents<{}>, ContextMessage> implements
 
   public options<Options extends object = Readonly<Record<string, string>>>(): Promise<Readonly<Options>>
   public options<Option extends string = string>(name: string): Promise<Option | undefined>
+  // What this Process was started with never changes: its handle, read once, holds it.
   public async options(name?: string) {
     const process = await owner()
-    return name === undefined ? process.options() : process.options(name)
+    return name === undefined ? process.options : process.options[name]
   }
 
-  public async opened() {
-    const [opened] = await wire.request(["opened"]) as [unknown]
-    return opened === null ? null : parseOpenTarget(opened)
-  }
+  public async opened() { return (await owner()).opened }
 
   public async stop() { await wire.request(["stop-current"]) }
   public async isService() { return contextClient.isService() }
