@@ -35,7 +35,6 @@ import {
   type ServerLaunch,
   type Presentation,
   type PresentationMoveGesture,
-  type PresentationMoveGestureStart,
   type PresentationMovePoint,
   type PresentationEvents,
   type PresentationGeometry,
@@ -583,8 +582,9 @@ class PresentationHandle extends Events<PresentationEvents, never> implements Pr
   public async interactive() { return (await this.drawing()).interactive }
   public async surface() { return (await this.drawing()).surface }
 
-  public beginMoveGesture(start: PresentationMoveGestureStart): PresentationMoveGesture {
-    return new PresentationMoveGestureHandle(this.target(), start)
+  // A function a header can be handed as it is, without its presentation.
+  public readonly beginMoveGesture = (origin: PresentationMovePoint): PresentationMoveGesture => {
+    return new PresentationMoveGestureHandle(this.target(), origin)
   }
 
   public move(position: PresentationPosition) { return this.writes.move(position) }
@@ -599,16 +599,16 @@ class PresentationHandle extends Events<PresentationEvents, never> implements Pr
 class PresentationMoveGestureHandle implements PresentationMoveGesture {
   private readonly gesture = crypto.randomUUID()
   private readonly address: Promise<HandleAddress>
-  public readonly ready: Promise<void>
+  private readonly began: Promise<void>
   public readonly finished: Promise<void>
   private ended = false
 
-  public constructor(target: Promise<HandleAddress>, start: PresentationMoveGestureStart) {
+  public constructor(target: Promise<HandleAddress>, origin: PresentationMovePoint) {
     this.address = target
-    this.ready = target.then(async address => {
-      await wire.request(["presentationMoveGestureBegin", address, this.gesture, start])
+    this.began = target.then(async address => {
+      await wire.request(["presentationMoveGestureBegin", address, this.gesture, origin])
     })
-    this.finished = this.ready.then(async () => {
+    this.finished = this.began.then(async () => {
       await wire.request(["presentationMoveGestureWait", await this.address, this.gesture])
     })
     // A gesture may be abandoned by document teardown before its owner can end
@@ -620,25 +620,25 @@ class PresentationMoveGestureHandle implements PresentationMoveGesture {
   // Each position goes after the move has begun, in the order it came; one sent after the end is dropped.
   public move(point: PresentationMovePoint) {
     if (this.ended) return
-    void this.ready.then(async () => {
+    void this.began.then(async () => {
       const address = await this.address
       if (!this.ended) wire.send("end-host", "presentationMoveGestureMove", address, this.gesture, point)
     }, () => undefined)
   }
 
-  public end(point: PresentationMovePoint) {
+  public end() {
     if (this.ended) return
     this.ended = true
-    void this.ready.then(async () => {
+    void this.began.then(async () => {
       const address = await this.address
-      wire.send("end-host", "presentationMoveGestureEnd", address, this.gesture, point)
+      wire.send("end-host", "presentationMoveGestureEnd", address, this.gesture)
     }, () => undefined)
   }
 
   public cancel() {
     if (this.ended) return
     this.ended = true
-    void this.ready.then(async () => {
+    void this.began.then(async () => {
       const address = await this.address
       wire.send("end-host", "presentationMoveGestureCancel", address, this.gesture)
     }, () => undefined)

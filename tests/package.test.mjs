@@ -269,7 +269,7 @@ test("package contract", async () => {
   const windowStop = context.window.subscribe("move", position => void position.x)
   const windowPosition = context.window.position()
   const presentationLayer = context.presentation.layer()
-  const moveGesture = context.presentation.beginMoveGesture({ origin: { x: 0, y: 0 }, point: { x: 8, y: 8 } })
+  const moveGesture = context.presentation.beginMoveGesture({ x: 0, y: 0 })
   const clientSurface: Promise<void> = context.presentation.transactionAndWait({ duration: 120, easing: "ease-out" }).setSurface(true)
   const removedClientSurface: Promise<void> = context.presentation.setSurface(false)
   const interactive: Promise<void> = context.presentation.setInteractive(false)
@@ -294,7 +294,6 @@ test("package contract", async () => {
   void drawnWidth
   void drawnFront
   void presentationStop
-  void moveGesture.ready
   void moveGesture.finished
   void interactive
   void anchored
