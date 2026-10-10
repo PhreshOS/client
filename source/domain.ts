@@ -36,6 +36,7 @@ import {
   type Presentation,
   type PresentationMoveGesture,
   type PresentationMoveGestureStart,
+  type PresentationMovePoint,
   type PresentationEvents,
   type PresentationGeometry,
   type PresentationPosition,
@@ -614,6 +615,24 @@ class PresentationMoveGestureHandle implements PresentationMoveGesture {
     // it. The boundary still owns cleanup; this only prevents an unhandled rejection.
     void this.finished.catch(() => undefined)
     void this.finished.then(() => { this.ended = true }, () => { this.ended = true })
+  }
+
+  // Each position goes after the move has begun, in the order it came; one sent after the end is dropped.
+  public move(point: PresentationMovePoint) {
+    if (this.ended) return
+    void this.ready.then(async () => {
+      const address = await this.address
+      if (!this.ended) wire.send("end-host", "presentationMoveGestureMove", address, this.gesture, point)
+    }, () => undefined)
+  }
+
+  public end(point: PresentationMovePoint) {
+    if (this.ended) return
+    this.ended = true
+    void this.ready.then(async () => {
+      const address = await this.address
+      wire.send("end-host", "presentationMoveGestureEnd", address, this.gesture, point)
+    }, () => undefined)
   }
 
   public cancel() {
