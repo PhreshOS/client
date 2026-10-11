@@ -1,7 +1,9 @@
 import {
   parseShellEvent,
   parseSystemAbout,
+  parseOpenOptions,
   parseOpenTarget,
+  type OpenOptions,
   type OpenTarget,
   parseAuthenticationRequirements,
   parseAuthenticationState,
@@ -61,8 +63,8 @@ class ClientSystem implements CoreSystem {
 
   public readonly opening = systemOpening
 
-  public async open(target: OpenTarget) {
-    await wire.request(["open", parseOpenTarget(target)])
+  public async open(target: OpenTarget, options?: OpenOptions) {
+    await wire.request(["open", parseOpenTarget(target), parseOpenOptions(options)])
   }
 
   public async about() {
