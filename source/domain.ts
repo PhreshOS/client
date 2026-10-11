@@ -579,6 +579,7 @@ class PresentationHandle extends Events<PresentationEvents, never> implements Pr
   public async position() { return (await this.drawing()).position }
   public async size() { return (await this.drawing()).size }
   public async front() { return (await this.drawing()).front }
+  public async focused() { return (await this.drawing()).focused }
   public async interactive() { return (await this.drawing()).interactive }
   public async surface() { return (await this.drawing()).surface }
 
@@ -668,7 +669,7 @@ function deferredScoped(route: string, target: WindowTarget, convert: (event: st
 }
 
 function presentationEvent(event: string) {
-  return event === "move" || event === "resize" || event === "front" || event === "changeInteractive" || event === "changeSurface" || event === "changeAnchor"
+  return event === "move" || event === "resize" || event === "front" || event === "focus" || event === "changeInteractive" || event === "changeSurface" || event === "changeAnchor"
 }
 
 function windowEvent(event: string) {

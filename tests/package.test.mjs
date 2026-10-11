@@ -139,6 +139,7 @@ test("package contract", async () => {
   assert.equal(typeof context.presentation.position, "function")
   assert.equal(typeof context.presentation.size, "function")
   assert.equal(typeof context.presentation.front, "function")
+  assert.equal(typeof context.presentation.focused, "function")
   assert.equal(typeof context.presentation.interactive, "function")
   assert.equal(typeof context.presentation.surface, "function")
   assert.equal(typeof context.presentation.subscribe, "function")
@@ -290,9 +291,11 @@ test("package contract", async () => {
   context.presentation.move({ x: "0/1", y: 0 })
   const drawnWidth: Promise<number> = context.presentation.size().then(size => size.width)
   const drawnFront: Promise<boolean> = context.presentation.front()
+  const drawnFocused: Promise<boolean> = context.presentation.focused()
   const presentationStop = context.presentation.subscribe("changeInteractive", interactive => void interactive)
   void drawnWidth
   void drawnFront
+  void drawnFocused
   void presentationStop
   void moveGesture.finished
   void interactive
