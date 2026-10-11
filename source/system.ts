@@ -43,7 +43,7 @@ import { systemOpening } from "./opening.js"
 import { prepareService } from "./service.js"
 import { uploads } from "./uploads.js"
 import Events from "./events.js"
-import { exit, process, program, type ProcessRecord, type ProgramRecord } from "./domain.js"
+import { exit, pinTime, process, program, type ProcessRecord, type ProgramRecord } from "./domain.js"
 import { systemLogs, systemStorage } from "./storage.js"
 import network from "./network.js"
 import { connection, session } from "./authentication.js"
@@ -228,7 +228,7 @@ function systemProcessEvent(event: string, values: unknown[]): unknown {
 function systemProgramEvent(event: string, values: unknown[]): unknown {
   if (event === "create" || event === "forget" || event === "install") return program(values[1])
   if (event === "uninstall") return { program: program(values[1]), purge: values[2] === true }
-  if (event === "pin") return { program: program(values[1]), pinned: values[2] === true }
+  if (event === "pin") return { program: program(values[1]), pinnedAt: pinTime(values[2]) }
   if (event === "changePermissions") {
     const handle = program(values[1])
     return { program: handle, permissions: parsePermissions((values[1] as { permissions?: unknown }).permissions) }
