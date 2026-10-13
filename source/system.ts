@@ -10,17 +10,13 @@ import {
   parsePermissions,
   parseSessionEndSnapshot,
   parseSystemProgramListOptions,
-  parseSystemServiceListOptions,
   execute as executeRequest,
   type Connection,
-  type ClientService,
   type ExecuteRequest,
   type ExecuteResult,
   type IconSize,
   type Launch,
   type ProgramDefinition,
-  type ServerService,
-  type ServiceAddress,
   type ShellOptions,
   type System as CoreSystem,
   type AuthenticationCredentials,
@@ -31,8 +27,6 @@ import {
   type SystemProgram as CoreSystemProgram,
   type SystemProgramEvents,
   type SystemService,
-  type SystemServiceListOptions,
-  type SystemServiceEvents,
   type SystemProgramListOptions,
   type Session,
   type WritableAppearance
@@ -40,7 +34,7 @@ import {
 import ClientAppearance from "./appearance.js"
 import wire from "./wire.js"
 import { systemOpening } from "./opening.js"
-import { prepareService } from "./service.js"
+import { serviceHandle } from "./service.js"
 import { uploads } from "./uploads.js"
 import Events from "./events.js"
 import { exit, timeOrNull, process, program, type ProcessRecord, type ProgramRecord } from "./domain.js"
@@ -57,7 +51,7 @@ class ClientSystem implements CoreSystem {
   public readonly authentication: SystemAuthentication = new SystemAuthenticationHandle()
   public readonly permissions = systemPermissions
   public readonly logs = systemLogs()
-  public readonly service: SystemService = new SystemServiceHandle()
+  public readonly service = serviceHandle as SystemService
   public readonly uploads = uploads
   public readonly network = network
 
@@ -87,27 +81,6 @@ class ClientSystem implements CoreSystem {
     for await (const event of wire.stream(["shell", command, settings], undefined, signal)) yield parseShellEvent(event)
   }
 
-}
-
-class SystemServiceHandle extends Events<SystemServiceEvents, never> implements SystemService {
-  public constructor() {
-    super(
-      (event, listener, impossible) => wire.on("host-service", event, (...values) => listener(prepareService(values[1] as ServiceAddress)), null, impossible),
-      observer => wire.onAll("host-service", (event, ...values) => {
-        if (typeof event === "string") observer(event, prepareService(values[1] as ServiceAddress))
-      })
-    )
-  }
-
-  public async list(options: SystemServiceListOptions = {}): Promise<(ServerService | ClientService)[]> {
-    const [addresses] = await wire.request(["host-service-list", parseSystemServiceListOptions(options)]) as [ServiceAddress[]]
-    return addresses.map(address => prepareService(address))
-  }
-
-  public prepare<EventsMap extends object = {}, Fallback = unknown>(address: ServiceAddress<"server">): ServerService<EventsMap, Fallback>
-  public prepare<EventsMap extends object = {}, Fallback = unknown>(address: ServiceAddress<"client">): ClientService<EventsMap, Fallback>
-  public prepare(address: ServiceAddress): ServerService | ClientService
-  public prepare(address: ServiceAddress) { return prepareService(address) }
 }
 
 class SystemProgramHandle extends Events<SystemProgramEvents, never> implements CoreSystemProgram {

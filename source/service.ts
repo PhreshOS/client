@@ -1,13 +1,13 @@
 import {
   ClientService as CoreClientService,
   ServerService as CoreServerService,
+  Service as CoreService,
   isServiceAddress,
   type ClientService,
   type ServerService,
+  type Service,
   type ServiceAddress,
-  type ServiceLifecycle,
-  type ServiceProgramMetadata,
-  type IconSize
+  type ServiceLifecycle
 } from "@phreshos/core"
 import Deadline from "./deadline.js"
 import Events from "./events.js"
@@ -36,16 +36,6 @@ class ServiceHandle {
   public async waitReady(timeout?: number) {
     await wire.request(["service-wait-ready", this.serviceAddress, timeout], timeout)
   }
-
-  public async programMetadata() {
-    const [value] = await wire.request(["service-program-metadata", this.serviceAddress]) as [unknown]
-    return parseServiceProgramMetadata(value)
-  }
-
-  public async programIcon(size: IconSize = "medium") {
-    const [value] = await wire.request(["service-program-icon", this.serviceAddress, size]) as [unknown]
-    return parseServiceProgramIcon(value)
-  }
 }
 
 class ServerHandler extends CoreServerService {
@@ -55,7 +45,7 @@ class ServerHandler extends CoreServerService {
   public readonly lifecycle: ServiceLifecycle
   private readonly service: ServiceHandle
 
-  public constructor(private readonly serviceAddress: ServiceAddress<"server">) {
+  public constructor(private readonly serviceAddress: ServiceAddress<"server"> & Readonly<{ endpoint: "server" }>) {
     super()
     this.service = new ServiceHandle(serviceAddress)
     this.lifecycle = this.service.lifecycle
@@ -68,8 +58,6 @@ class ServerHandler extends CoreServerService {
   public readonly publish = (event: string, payload: unknown = undefined) => { this.service.publish(event, payload) }
   public address() { return this.serviceAddress }
   public available() { return this.service.available() }
-  public programMetadata() { return this.service.programMetadata() }
-  public programIcon(size?: IconSize) { return this.service.programIcon(size) }
 
   public waitReady(timeout?: number) { return this.service.waitReady(timeout) }
 
@@ -103,7 +91,7 @@ class ClientHandler extends CoreClientService {
   public readonly lifecycle: ServiceLifecycle
   private readonly service: ServiceHandle
 
-  public constructor(private readonly serviceAddress: ServiceAddress<"client">) {
+  public constructor(private readonly serviceAddress: ServiceAddress<"client"> & Readonly<{ endpoint: "client" }>) {
     super()
     this.service = new ServiceHandle(serviceAddress)
     this.lifecycle = this.service.lifecycle
@@ -116,26 +104,46 @@ class ClientHandler extends CoreClientService {
   public readonly publish = (event: string, payload: unknown = undefined) => { this.service.publish(event, payload) }
   public address() { return this.serviceAddress }
   public available() { return this.service.available() }
-  public programMetadata() { return this.service.programMetadata() }
-  public programIcon(size?: IconSize) { return this.service.programIcon(size) }
   public waitReady(timeout?: number) { return this.service.waitReady(timeout) }
 }
 
-export function prepareService<EventsMap extends object = {}, Fallback = unknown>(address: ServiceAddress<"server">): ServerService<EventsMap, Fallback>
-export function prepareService<EventsMap extends object = {}, Fallback = unknown>(address: ServiceAddress<"client">): ClientService<EventsMap, Fallback>
-export function prepareService(address: ServiceAddress): ServerService | ClientService
-export function prepareService(address: ServiceAddress): ServerService | ClientService {
-  if (!isServiceAddress(address)) throw new Error("A complete Service address is required")
+/** Whichever Endpoint holds a Service name, for what both kinds share. */
+class AnyHandler extends CoreService {
+  public readonly subscribe: CoreService["subscribe"]
+  public readonly wait: CoreService["wait"]
+  public readonly events: CoreService["events"]
+  public readonly lifecycle: ServiceLifecycle
+  private readonly service: ServiceHandle
 
-  const identity = JSON.stringify([address.program, address.process, address.endpoint])
-
-  if (address.endpoint === "server") {
-    const normalized = Object.freeze({ program: address.program, process: address.process, endpoint: "server" as const })
-    return handles.obtain<ServerService>(`service:${identity}`, () => new ServerHandler(normalized))
+  public constructor(private readonly serviceAddress: ServiceAddress) {
+    super()
+    this.service = new ServiceHandle(serviceAddress)
+    this.lifecycle = this.service.lifecycle
+    const events = new Events(...serviceEvents(serviceAddress, "events"))
+    this.subscribe = events.subscribe
+    this.wait = events.wait
+    this.events = events.events
   }
 
-  const normalized = Object.freeze({ program: address.program, process: address.process, endpoint: "client" as const })
-  return handles.obtain<ClientService>(`service:${identity}`, () => new ClientHandler(normalized))
+  public readonly publish = (event: string, payload: unknown = undefined) => { this.service.publish(event, payload) }
+  public address() { return this.serviceAddress }
+  public available() { return this.service.available() }
+  public waitReady(timeout?: number) { return this.service.waitReady(timeout) }
+}
+
+/**
+ * The handle to a Service name, the same one for the same address: the Server holding it, the Client
+ * holding it, or whichever Endpoint holds it when no kind is named. It reaches the System only when used.
+ */
+export function serviceHandle(address: ServiceAddress): Service {
+  if (!isServiceAddress(address)) throw new Error("A Service is reached by its name, such as file-picker-v1, and optionally the kind of Endpoint")
+
+  const { name, endpoint } = address
+  const key = `service:${name}:${endpoint ?? "any"}`
+
+  if (endpoint === "server") return handles.obtain<ServerService>(key, () => new ServerHandler(Object.freeze({ name, endpoint })))
+  if (endpoint === "client") return handles.obtain<ClientService>(key, () => new ClientHandler(Object.freeze({ name, endpoint })))
+  return handles.obtain<Service>(key, () => new AnyHandler(Object.freeze({ name })))
 }
 
 function serviceEvents(address: ServiceAddress, scope: "lifecycle" | "events") {
@@ -145,23 +153,4 @@ function serviceEvents(address: ServiceAddress, scope: "lifecycle" | "events") {
       if (typeof event === "string") listener(event, payload)
     }, impossible)
   ] as const satisfies ConstructorParameters<typeof Events>
-}
-
-function parseServiceProgramMetadata(value: unknown): ServiceProgramMetadata {
-  if (!value || typeof value !== "object") throw new Error("The System returned invalid Service Program metadata")
-
-  const metadata = value as { name?: unknown, version?: unknown }
-
-  if (typeof metadata.name !== "string" || typeof metadata.version !== "string") {
-    throw new Error("The System returned invalid Service Program metadata")
-  }
-
-  return Object.freeze({ name: metadata.name, version: metadata.version })
-}
-
-function parseServiceProgramIcon(value: unknown) {
-  if (!Array.isArray(value) || value.some(byte => typeof byte !== "number")) {
-    throw new Error("The System returned an invalid Service Program icon")
-  }
-  return new Blob([Uint8Array.from(value)], { type: "image/png" })
 }

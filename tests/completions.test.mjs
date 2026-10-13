@@ -13,7 +13,7 @@ test("completions contract", async () => {
 
   declare const system: System
 
-  system.service.prepare({ program: "counter", process: "main", endpoint: "" })
+  system.service({ name: "counter-v1", endpoint: "" })
   `
   const position = source.indexOf(marker) + "endpoint: \"".length
   const languageHost = {
