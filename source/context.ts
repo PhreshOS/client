@@ -1,3 +1,4 @@
+import { parseEndpointMetadata } from "@phreshos/core"
 import type {
   ClientContext as CoreClientContext,
   ContextEvents as CoreContextEvents,
@@ -16,11 +17,8 @@ import {
   endpointEvents,
   process,
   program,
-  visibleEndpoint,
   presentation,
   window as windowHandle,
-  type Endpoint,
-  type EndpointReference,
   type Process,
   type ProcessRecord,
   type ProgramRecord,
@@ -33,11 +31,11 @@ import { contextPermissions } from "./permissions.js"
 /** The executing Process's canonical Server Endpoint handle. */
 type ContextServer<Events extends object = {}, Fallback = unknown> = ServerEndpoint<Events, Fallback>
 
-/** One value addressed to the current Client Endpoint, with a client-visible sender. */
-type ContextMessage<Payload = unknown> = CoreContextMessage<Payload, Endpoint | null>
+/** One value addressed to the current Client Endpoint, with who sent it. */
+type ContextMessage<Payload = unknown> = CoreContextMessage<Payload>
 
-/** Applies the client-visible sender envelope to known Context events. */
-type ContextEvents<Events extends object> = CoreContextEvents<Events, Endpoint | null>
+/** Applies the sender metadata to known Context events. */
+type ContextEvents<Events extends object> = CoreContextEvents<Events>
 
 type Context<Events extends object = {}> = CoreClientContext<Events>
 
@@ -68,7 +66,7 @@ class ContextServerHandle extends ServerEndpoint {
 
   public async start(launch: ServerLaunch = {}) { await wire.request(["start-endpoint", undefined, "server", launch]) }
   public async stop() { await wire.request(["stop-endpoint", undefined, "server"]) }
-  public async isService() { return (await wire.request(["is-service", "server"]) as [boolean])[0] }
+  public async service() { return (await wire.request(["endpoint-service", "server"]) as [string | false])[0] }
   public async waitReady(timeout?: number) { await wire.request(["wait-ready", undefined, "server"], timeout) }
 
   public async ask<Answer = unknown>(event: string, payload: unknown = undefined) {
@@ -140,7 +138,7 @@ class ContextClientHandle extends ClientEndpoint {
 
   public async start(launch: ClientLaunch = {}) { await wire.request(["start-endpoint", undefined, "client", launch]) }
   public async stop() { await wire.request(["stop-endpoint", undefined, "client"]) }
-  public async isService() { return (await wire.request(["is-service", "client"]) as [boolean])[0] }
+  public async service() { return (await wire.request(["endpoint-service", "client"]) as [string | false])[0] }
   public async waitReady(timeout?: number) { await wire.request(["wait-ready", undefined, "client"], timeout) }
 }
 
@@ -187,7 +185,7 @@ class ClientContext extends Events<ContextEvents<{}>, ContextMessage> implements
   public async opened() { return (await owner()).opened }
 
   public async stop() { await wire.request(["stop-current"]) }
-  public async isService() { return contextClient.isService() }
+  public async service() { return contextClient.service() }
   public publish(event: string, payload: unknown = undefined) { wire.send("end-host", "emit", event, payload) }
 }
 
@@ -197,8 +195,8 @@ async function currentAddress() {
 }
 
 function contextMessage(value: unknown): ContextMessage {
-  const raw = value as { from?: EndpointReference | null, payload?: unknown }
-  return { from: visibleEndpoint(raw.from), payload: raw.payload }
+  const raw = value as { from?: unknown, payload?: unknown }
+  return { from: parseEndpointMetadata(raw.from ?? null), payload: raw.payload }
 }
 
 /** Inbound events, owner hierarchy, and paired Server Endpoint for this Client runtime. */

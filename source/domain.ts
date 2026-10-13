@@ -4,6 +4,7 @@ import {
   Process as CoreProcess,
   Program as CoreProgram,
   ServerEndpoint as CoreServerEndpoint,
+  parseEndpointMetadata,
   parseEndpointReference,
   parseProcessSnapshot,
   parseProgramDefinition,
@@ -90,41 +91,24 @@ export type ProgramProcessRunEvent = CoreProgramProcessRunEvent
 export type ProgramProcessRunOptions = CoreProgramProcessRunOptions
 export type Process = CoreProcess
 
-/** Traffic value resolved to the same global Endpoint handles as the System. */
-export type TrafficMessage<Payload = unknown> = CoreTrafficMessage<Payload, Endpoint | null>
+/** Traffic value carrying where it went, as public Endpoint metadata. */
+export type TrafficMessage<Payload = unknown> = CoreTrafficMessage<Payload>
 
-/** Applies client-visible destination metadata to known traffic events. */
-export type TrafficEvents<Events extends object> = CoreTrafficEvents<Events, Endpoint | null>
+/** Applies destination metadata to known traffic events. */
+export type TrafficEvents<Events extends object> = CoreTrafficEvents<Events>
 
-/** Every ordinary event observable in client-visible Endpoint traffic. */
-export type TrafficCapture<Events extends object = {}, Fallback = unknown> = CoreTrafficCapture<Events, Endpoint | null, Fallback>
+/** Every ordinary event observable in Endpoint traffic. */
+export type TrafficCapture<Events extends object = {}, Fallback = unknown> = CoreTrafficCapture<Events, Fallback>
 
-/** Question carrying its globally resolved Server Endpoint destination. */
-export type AskMessage<Payload = unknown> = CoreAskMessage<Payload, ServerEndpoint | null>
-
-/** One question observable in client-visible Endpoint traffic. */
-export type AskCapture<Payload = unknown> = CoreAskCapture<Payload, ServerEndpoint | null>
-
-/** Callback that observes questions sent by a client-visible Endpoint. */
-export type AskSubscriber<Payload = unknown> = CoreAskSubscriber<Payload, ServerEndpoint | null>
-
-/** Answer carrying its globally resolved Endpoint destination. */
-export type AnswerMessage<Result = unknown> = CoreAnswerMessage<Result, Endpoint | null>
-
-/** One answer observable in client-visible Server Endpoint traffic. */
-export type AnswerCapture<Result = unknown> = CoreAnswerCapture<Result, Endpoint | null>
-
-/** Callback that observes answers sent by a client-visible Server Endpoint. */
-export type AnswerSubscriber<Result = unknown> = CoreAnswerSubscriber<Result, Endpoint | null>
-
-/** Directed communication originating from one client-visible Endpoint. */
-export type EndpointTraffic<Events extends object = {}, Fallback = unknown> = CoreEndpointTraffic<Events, Endpoint | null, ServerEndpoint | null, Fallback>
-
-/** Directed communication originating from one client-visible Server Endpoint. */
-export type ServerTraffic<Events extends object = {}, Fallback = unknown> = CoreServerTraffic<Events, Endpoint | null, ServerEndpoint | null, Fallback>
-
-/** Directed communication originating from one client-visible Client Endpoint. */
-export type ClientTraffic<Events extends object = {}, Fallback = unknown> = CoreClientTraffic<Events, Endpoint | null, ServerEndpoint | null, Fallback>
+export type AskMessage<Payload = unknown> = CoreAskMessage<Payload>
+export type AskCapture<Payload = unknown> = CoreAskCapture<Payload>
+export type AskSubscriber<Payload = unknown> = CoreAskSubscriber<Payload>
+export type AnswerMessage<Result = unknown> = CoreAnswerMessage<Result>
+export type AnswerCapture<Result = unknown> = CoreAnswerCapture<Result>
+export type AnswerSubscriber<Result = unknown> = CoreAnswerSubscriber<Result>
+export type EndpointTraffic<Events extends object = {}, Fallback = unknown> = CoreEndpointTraffic<Events, Fallback>
+export type ServerTraffic<Events extends object = {}, Fallback = unknown> = CoreServerTraffic<Events, Fallback>
+export type ClientTraffic<Events extends object = {}, Fallback = unknown> = CoreClientTraffic<Events, Fallback>
 
 export type Endpoint<Events extends object = {}, Fallback = unknown> = CoreEndpoint<Events, Fallback>
 export type ServerEndpoint<Events extends object = {}, Fallback = unknown> = CoreServerEndpoint<Events, Fallback>
@@ -407,8 +391,8 @@ export class ServerTrafficHandle<EventsMap extends object = {}, Fallback = unkno
   private followAnswers<Result>(subscriber: (capture: AnswerCapture<Result>) => unknown, impossible?: (error: Error) => void): Cleanup {
     return wire.observe(this.target, "server", "answer", null, (event, questionId, value) => {
       if (typeof event !== "string" || typeof questionId !== "string") return
-      const raw = value as { to?: EndpointReference | null, outcome?: AnswerOutcome }
-      subscriber({ event, questionId, message: { to: visibleEndpoint(raw.to), outcome: raw.outcome as AnswerOutcome<Result> } })
+      const raw = value as { to?: unknown, outcome?: AnswerOutcome }
+      subscriber({ event, questionId, message: { to: parseEndpointMetadata(raw.to ?? null), outcome: raw.outcome as AnswerOutcome<Result> } })
     }, impossible)
   }
 }
@@ -442,7 +426,7 @@ class ServerEndpointHandle extends CoreServerEndpoint {
 
   public async start(launch: ServerLaunch = {}) { await wire.request(["start-endpoint", this.owner.address, "server", launch]) }
   public async stop() { await wire.request(["stop-endpoint", this.owner.address, "server"]) }
-  public async isService() { return (await wire.request(["is-service", "server", this.owner.address]) as [boolean])[0] }
+  public async service() { return (await wire.request(["endpoint-service", "server", this.owner.address]) as [string | false])[0] }
   public async waitReady(timeout?: number) { await wire.request(["wait-ready", this.owner.address, "server"], timeout) }
 
   public async ask<Answer = unknown>(event: string, payload: unknown = undefined) {
@@ -500,7 +484,7 @@ class ClientEndpointHandle extends CoreClientEndpoint {
 
   public async start(launch: ClientLaunch = {}) { await wire.request(["start-endpoint", this.owner.address, "client", launch]) }
   public async stop() { await wire.request(["stop-endpoint", this.owner.address, "client"]) }
-  public async isService() { return (await wire.request(["is-service", "client", this.owner.address]) as [boolean])[0] }
+  public async service() { return (await wire.request(["endpoint-service", "client", this.owner.address]) as [string | false])[0] }
   public async waitReady(timeout?: number) { await wire.request(["wait-ready", this.owner.address, "client"], timeout) }
 
 }
@@ -802,8 +786,8 @@ function numberOrNull(value: unknown) { return typeof value === "number" ? value
 function stringOrNull(value: unknown) { return typeof value === "string" ? value : null }
 
 export function trafficMessage(value: unknown): TrafficMessage {
-  const raw = value as { to?: EndpointReference | null, payload?: unknown }
-  return { to: visibleEndpoint(raw.to), payload: raw.payload }
+  const raw = value as { to?: unknown, payload?: unknown }
+  return { to: parseEndpointMetadata(raw.to ?? null), payload: raw.payload }
 }
 
 export function program(value: unknown): Program {
@@ -842,11 +826,7 @@ export function presentation(target: WindowTarget): Presentation {
   return new PresentationHandle(target)
 }
 
-/** Resolves an Endpoint reference through the Client Endpoint's global handle registry. */
-export function visibleEndpoint(reference: EndpointReference | null | undefined): Endpoint | null {
-  if (reference === null) return null
-  return endpoint(reference)
-}
+
 
 /** Runtime constructor shared by all client-visible Program handles. */
 export const Program = CoreProgram
