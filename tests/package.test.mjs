@@ -83,6 +83,8 @@ test("package contract", async () => {
 
   const sdk = await import("@phreshos/client")
   const { context, desktop, system } = sdk
+  // Loading the SDK announces the document, and nothing else.
+  assert.equal(messages.length, 1)
   const { ClientEndpoint, ClientService, Endpoint, Process, Program, ServerEndpoint, ServerService, Service } = core
 
   assert.deepEqual(Object.keys(sdk).sort(), ["context", "desktop", "system"])
@@ -174,7 +176,7 @@ test("package contract", async () => {
   assert.equal(typeof service.lifecycle.subscribe, "function")
   assert.equal("channel" in service, false)
   assert.equal("docs" in service, false)
-  assert.equal(messages.length, 0)
+  assert.equal(messages.length, 1)
   `
     )
     execFileSync(process.execPath, [join(consumer, "runtime.mjs")], {

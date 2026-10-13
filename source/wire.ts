@@ -81,6 +81,10 @@ class Wire {
 
       this.deliver(route, values)
     })
+
+    // The document announces itself before anything else it sends, so the Desktop ends what an
+    // earlier document in this frame held (a reload) exactly here, not at the frame's load.
+    this.post(["boundary", "document"])
   }
 
   public send(route: string, ...values: unknown[]) {
